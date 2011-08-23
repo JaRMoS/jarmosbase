@@ -13,6 +13,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.*;
 
 import org.w3c.dom.Document;
@@ -88,6 +89,7 @@ public abstract class AModelManager {
 
 	private String mdir = "notset";
 	private DocumentBuilder db = null;
+	private Validator dv = null;
 	private Document modelxml = null;
 	private Node modelnode = null;
 	private MathObjectReader mor = null;
@@ -101,13 +103,23 @@ public abstract class AModelManager {
 		super();
 		mhandlers = new ArrayList<IMessageHandler>();
 		try {
+			// Create the document builder
 			DocumentBuilderFactory bf = DocumentBuilderFactory.newInstance();
 			bf.setIgnoringElementContentWhitespace(true);
 
 			db = bf.newDocumentBuilder();
+
+			// Create the schema validator
+			InputStream in = getClass().getResourceAsStream("/model.xsd");
+			SchemaFactory sf = SchemaFactory.newInstance("http://www.w3.org/2001/XMLSchema");
+			Schema s = sf.newSchema(new StreamSource(in));
+			dv = s.newValidator();
 		}
 		catch (ParserConfigurationException e) {
 			throw new RuntimeException("Error creating a XML document builder", e);
+		}
+		catch (SAXException e) {
+			throw new RuntimeException("Error creating a XML schema validator", e);
 		}
 	}
 
@@ -153,8 +165,8 @@ public abstract class AModelManager {
 	 * @param dir
 	 *            The directory to change to
 	 * @throws ModelManagerException
-	 *             No file "model.xml" present in directory or model.xml file
-	 *             invalid.
+	 *             No file "model.xml" present in directory, or model.xml file
+	 *             has an invalid schema or IO errors occur.
 	 */
 	public void setModelDir(String dir) throws ModelManagerException {
 		String olddir = mdir;
@@ -164,22 +176,33 @@ public abstract class AModelManager {
 					+ dir);
 		}
 		try {
-			modelxml = db.parse(getInStream("model.xml"));
-//			SchemaFactory sf = SchemaFactory.newInstance("");
-//			
-//			Schema s = sf.newSchema(new File("model.dtd"));
-//			Validator v = s.newValidator();
-//			DOMResult res = new DOMResult();
-//			v.validate(new DOMSource(modelxml), res);
-			
-			modelxml.normalize();
-			modelnode = modelxml.getElementsByTagName("model").item(0);
+			try {
+				modelxml = db.parse(getInStream("model.xml"));
+			}
+			catch (SAXException e) {
+				mdir = olddir;
+				throw new ModelManagerException("SAX parser exception when parsing model.xml in "
+						+ dir, e);
+			}
+
+			try {
+				dv.validate(new DOMSource(modelxml));
+			}
+			catch (SAXException se) {
+				mdir = olddir;
+				throw new ModelManagerException("model.xml validation failed for model in "
+						+ dir, se);
+			}
 		}
-		catch (Exception e) {
+		catch (IOException e) {
 			mdir = olddir;
-			throw new ModelManagerException("Could not set the model directory to "
+			throw new ModelManagerException("I/O error when accessing model.xml in "
 					+ dir, e);
 		}
+
+		modelxml.normalize();
+		modelnode = modelxml.getElementsByTagName("model").item(0);
+
 		// Parse model data machine format
 		mor = new MathObjectReader();
 		String machformat = getModelXMLAttribute("machformat");
@@ -371,11 +394,11 @@ public abstract class AModelManager {
 		sendMessage(filename);
 		return getInStreamImpl(filename);
 	}
-	
+
 	/**
 	 * Template method.
 	 * 
-	 * Implementations of this method must locate the given file inside the 
+	 * Implementations of this method must locate the given file inside the
 	 * current model directory and return an input stream pointing to it.
 	 * 
 	 * @param filename
@@ -383,7 +406,8 @@ public abstract class AModelManager {
 	 * @return An InputStream pointing to the resource
 	 * @throws IOException
 	 */
-	protected abstract InputStream getInStreamImpl(String filename) throws IOException;
+	protected abstract InputStream getInStreamImpl(String filename)
+			throws IOException;
 
 	/**
 	 * 
