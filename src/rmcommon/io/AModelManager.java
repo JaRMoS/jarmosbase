@@ -1,20 +1,21 @@
 package rmcommon.io;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamSource;
-import javax.xml.validation.*;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
+import javax.xml.validation.Validator;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -32,7 +33,8 @@ import rmcommon.io.MathObjectReader.MachineFormats;
  * Implementing classes implement the abstract members in order to reflect
  * necessary adoptions to different input sources like the file system, websites
  * or others like Android-Assets. Implemented in JKerMor are
- * {@link rmcommon.io.WebModelManager} and {@link rmcommon.io.FileModelManager}.
+ * {@link rmcommon.io.WebModelManager} and
+ * {@link rmcommon.io.FileModelManager}.
  * 
  * Each manager has a root directory which must be, depending on the type,
  * either provided at instantiation or are given implicitly. The model system is
@@ -40,18 +42,23 @@ import rmcommon.io.MathObjectReader.MachineFormats;
  * contain a single model. Within each such folder, a model.xml-file must be
  * present that describes the model.
  * 
- * The basic XML file structure is as follows:
- * {@code
- * <?xml version="1.0" encoding="utf-8"?>
-	<model type="sometype" title="sometitle" image="imagefile">
-	</model>
- * }
+ * The allowed XML file structure is determined by the model.xsd file in the
+ * JRMCommons jar file / project.
  * 
+ * Despite the model.xml file needed in every model folder,
  * 
  * @author dwirtz
  * 
  */
 public abstract class AModelManager {
+
+	/**
+	 * The name of the jar file inside a models directory containing .class
+	 * files in java bytecode. This file name can be used inside custom
+	 * implementations of getClassLoader, if directory searches are not
+	 * permitted/implemented (e.g. WebModelManager)
+	 */
+	public static final String CLASSES_JARFILE = "classes.jar";
 
 	/**
 	 * This Exception gets thrown when an error occurs regarding the
@@ -97,7 +104,17 @@ public abstract class AModelManager {
 	private List<IMessageHandler> mhandlers;
 
 	/**
+	 * Constructs a new ModelManager and a private DocumentBuilder and
+	 * SchemaFactory.
 	 * 
+	 * Unfortunately, the Android 8 API does not seem to support the W3C XML
+	 * Schema, so no validation is performed on an android :-(
+	 * 
+	 * See
+	 * {@link "http://stackoverflow.com/questions/3129934/schemafactory-doesnt-support-w3c-xml-schema-in-platform-level-8"}
+	 * or
+	 * {@link "http://developer.android.com/reference/javax/xml/validation/SchemaFactory.html#newInstance%28java.lang.String%29"}
+	 * on how it SHOULD be..
 	 */
 	public AModelManager() {
 		super();
@@ -111,22 +128,28 @@ public abstract class AModelManager {
 
 			// Create the schema validator
 			InputStream in = getClass().getResourceAsStream("/model.xsd");
-			SchemaFactory sf = SchemaFactory.newInstance("http://www.w3.org/2001/XMLSchema");
-			Schema s = sf.newSchema(new StreamSource(in));
-			dv = s.newValidator();
-		}
-		catch (ParserConfigurationException e) {
+			// SchemaFactory sf =
+			// SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI,
+			// "com.sun.org.apache.xerces.internal.jaxp.validation.XMLSchemaFactory",
+			// getClass().getClassLoader());
+
+			try {
+				SchemaFactory sf = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+				Schema s = sf.newSchema(new StreamSource(in));
+				dv = s.newValidator();
+			} catch (IllegalArgumentException e) {
+				/*
+				 * See constructor comment on what happens here.. Set Validator
+				 * to null if the IllegalArgumentException gets thrown
+				 */
+				dv = null;
+			}
+		} catch (ParserConfigurationException e) {
 			throw new RuntimeException("Error creating a XML document builder", e);
-		}
-		catch (SAXException e) {
+		} catch (SAXException e) {
 			throw new RuntimeException("Error creating a XML schema validator", e);
 		}
 	}
-
-	// public AModelManager(String modeldir) {
-	// this();
-	// this.mdir = modeldir;
-	// }
 
 	/**
 	 * 
@@ -137,10 +160,29 @@ public abstract class AModelManager {
 	}
 
 	/**
+	 * This method yields access to any specialized class loaders in subclasses.
+	 * As the android platform works with different loaders then a JRE, for
+	 * example, this interface is provided to enable custom classes loaded with
+	 * whatever platform.
+	 * 
+	 * If subclasses do not override, the default system class loader is
+	 * provided.
+	 * 
+	 * The class loader must be configured in a way that a call to
+	 * loadClass(String name) must search also inside the current model's
+	 * directory.
+	 * 
+	 * @return A custom class loader instance.
+	 */
+	public ClassLoader getClassLoader() {
+		return ClassLoader.getSystemClassLoader();
+	}
+
+	/**
 	 * Returns the model type as given in the model.xml attribute "type" of the
 	 * "model" tag.
 	 * 
-	 * @return
+	 * @return The model type as string
 	 */
 	public String getModelType() {
 		return getModelXMLAttribute("type");
@@ -158,47 +200,90 @@ public abstract class AModelManager {
 	}
 
 	/**
+	 * Checks if a model.xml file exists in the specified directory and performs
+	 * xsd-validation.
+	 * 
+	 * Note: On the current Android platform the validation using the xsd W3C
+	 * Schema is somehow NOT implemented; so, validation is skipped on android
+	 * platforms.
+	 * 
+	 * @param dir
+	 *            The directory to check
+	 * @return True if the directory contains a valid model, false otherwise
+	 */
+	public boolean isValidModelDir(String dir) {
+		/*
+		 *  Store current model directory if set, and temporarily set the model dir to dir.
+		 *  This is done as subclass implementations will of course depend on getModelDir() when calling
+		 *  modelFileExists().
+		 */
+		String olddir = mdir;
+		mdir = dir;
+		if (!modelFileExists("model.xml")) return false;
+		try {
+			try {
+				db.parse(getInStream("model.xml"));
+			} catch (SAXException e) {
+				return false;
+			}
+			try {
+				if (dv != null) {
+					dv.validate(new DOMSource(modelxml));
+				}
+			} catch (SAXException se) {
+				return false;
+			}
+		} catch (IOException e) {
+			throw new RuntimeException("I/O error while checking if model directory is valid.", e);
+		}
+		// Restore old model dir
+		mdir = olddir;
+		return true;
+	}
+
+	/**
 	 * Attempts to set the current directory as model directory. If the
-	 * specified directory does not contain an model.xml file or the file is not
-	 * valid, an exception is thrown.
+	 * specified directory does not contain an model.xml file or the file does
+	 * not comply with the model.xsd schema, an exception is thrown.
 	 * 
 	 * @param dir
 	 *            The directory to change to
 	 * @throws ModelManagerException
-	 *             No file "model.xml" present in directory, or model.xml file
-	 *             has an invalid schema or IO errors occur.
+	 *             The current model directory does not contain a valid model.
 	 */
 	public void setModelDir(String dir) throws ModelManagerException {
 		String olddir = mdir;
 		this.mdir = dir;
-		if (!modelFileExists("model.xml")) {
-			throw new ModelManagerException("No valid model found in the directory "
-					+ dir);
-		}
-		try {
+
+		if (isValidModelDir(dir)) {
 			try {
 				modelxml = db.parse(getInStream("model.xml"));
-			}
-			catch (SAXException e) {
+			} catch (Exception e) {
 				mdir = olddir;
-				throw new ModelManagerException("SAX parser exception when parsing model.xml in "
-						+ dir, e);
+				throw new RuntimeException("Unexpected Exception (parsing was done already in isValidModelDir("
+						+ dir + "))", e);
 			}
-
-			try {
-				dv.validate(new DOMSource(modelxml));
-			}
-			catch (SAXException se) {
-				mdir = olddir;
-				throw new ModelManagerException("model.xml validation failed for model in "
-						+ dir, se);
-			}
-		}
-		catch (IOException e) {
-			mdir = olddir;
-			throw new ModelManagerException("I/O error when accessing model.xml in "
-					+ dir, e);
-		}
+		} else
+			throw new ModelManagerException("Invalid model directory: " + dir);
+		// try {
+		//
+		//
+		// try {
+		// if (dv != null) {
+		// dv.validate(new DOMSource(modelxml));
+		// }
+		// } catch (SAXException se) {
+		// mdir = olddir;
+		// throw new
+		// ModelManagerException("model.xml validation failed for model in "
+		// + dir, se);
+		// }
+		// } catch (IOException e) {
+		// mdir = olddir;
+		// throw new
+		// ModelManagerException("I/O error when accessing model.xml in "
+		// + dir, e);
+		// }
 
 		modelxml.normalize();
 		modelnode = modelxml.getElementsByTagName("model").item(0);
@@ -377,7 +462,7 @@ public abstract class AModelManager {
 	 * Returns whether the specified file exists in the current model folder.
 	 * 
 	 * @param filename
-	 * @return
+	 * @return true if the file exists in the model, false otherwise
 	 */
 	public abstract boolean modelFileExists(String filename);
 
@@ -412,7 +497,8 @@ public abstract class AModelManager {
 	/**
 	 * 
 	 * @param filename
-	 * @return
+	 * @return A buffered reader with 8192 bytes buffer, pointing at the file
+	 *         specified.
 	 * @throws IOException
 	 */
 	public BufferedReader getBufReader(String filename) throws IOException {
@@ -423,48 +509,35 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * [Old] The URL for a model's info html page.
-	 * 
-	 * @return
-	 */
-	public abstract String getInfoFileURL();
-
-	// public abstract String getSourceShortDesc();
-
-	/**
 	 * Scans all directories given by getFolderList() for valid models and
 	 * returns a list of model descriptors for each valid model.
 	 * 
-	 * @return
+	 * @return A list of ModelDescriptors
 	 * @throws ModelManagerException
 	 */
 	public List<ModelDescriptor> getModelDescriptors()
 			throws ModelManagerException {
 		ArrayList<ModelDescriptor> res = new ArrayList<ModelDescriptor>();
+		String[] list = null;
 		try {
-			for (String model : getFolderList()) {
-				try {
-					setModelDir(model);
-				}
-				catch (ModelManagerException me) {
-					continue;
-				}
-
+			list = getFolderList();
+		} catch (IOException e) {
+			throw new ModelManagerException("Listing model folders failed.", e);
+		}
+		for (String modeldir : list) {
+			if (isValidModelDir(modeldir)) {
+				setModelDir(modeldir);
 				InputStream img = null;
-				String imgfile = getModelXMLAttribute("image");
+				String imgfile = getModelXMLTagValue("image");
 				if (imgfile != null) {
 					try {
 						img = getInStream(imgfile);
-					}
-					catch (IOException e) {
+					} catch (IOException e) {
 						// Ignore when the image could not be loaded.
 					}
 				}
-				res.add(new ModelDescriptor(model, getModelXMLAttribute("title"), getModelXMLAttribute("type"), img));
+				res.add(new ModelDescriptor(modeldir, getModelXMLTagValue("short"), getModelXMLAttribute("type"), img));
 			}
-		}
-		catch (IOException e) {
-			throw new ModelManagerException("Loading model list failed.", e);
 		}
 		return res;
 	}

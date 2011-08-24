@@ -5,7 +5,9 @@ package rmcommon.io;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -31,9 +33,33 @@ public class WebModelManager extends AModelManager {
 
 	private String rooturl;
 
+	/**
+	 * @param rooturl
+	 */
 	public WebModelManager(String rooturl) {
 		super();
 		this.rooturl = rooturl;
+	}
+	
+	/**
+	 * @return The root web url
+	 */
+	public String getRootURL() {
+		return rooturl;
+	}
+	
+	/**
+	 * @see rmcommon.io.AModelManager#getClassLoader()
+	 */
+	@Override
+	public ClassLoader getClassLoader() {
+		try {
+			URL url = new URL(rooturl + "/" + getModelDir() + "/" + CLASSES_JARFILE);
+			return new URLClassLoader(new URL[] { url }, super.getClassLoader());
+		}
+		catch (MalformedURLException e) {
+			return super.getClassLoader();
+		}
 	}
 
 	/*
@@ -42,13 +68,13 @@ public class WebModelManager extends AModelManager {
 	 * @see kermor.java.io.IModelManager#getInStream(java.lang.String)
 	 */
 	@Override
-	public InputStream getInStreamImpl(String filename) throws IOException {
+	protected InputStream getInStreamImpl(String filename) throws IOException {
 		URL u = new URL(rooturl + "/" + getModelDir() + "/" + filename);
 		return u.openStream();
 	}
 
 	@Override
-	public String[] getFolderList() throws IOException {
+	protected String[] getFolderList() throws IOException {
 		URL u = new URL(rooturl + "/" + DIRLIST_FILE);
 		Scanner s = new Scanner(u.openStream());
 		List<String> folders = new ArrayList<String>();
@@ -62,11 +88,9 @@ public class WebModelManager extends AModelManager {
 		}
 	}
 
-	@Override
-	public String getInfoFileURL() {
-		return rooturl + "/" + getModelDir() + "/" + info_filename;
-	}
-
+	/**
+	 * @see rmcommon.io.AModelManager#modelFileExists(java.lang.String)
+	 */
 	@Override
 	public boolean modelFileExists(String filename) {
 		try {
