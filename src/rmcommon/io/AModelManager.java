@@ -23,6 +23,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import rmcommon.IMessageHandler;
+import rmcommon.Log;
 import rmcommon.ModelDescriptor;
 import rmcommon.io.MathObjectReader.MachineFormats;
 
@@ -33,8 +34,7 @@ import rmcommon.io.MathObjectReader.MachineFormats;
  * Implementing classes implement the abstract members in order to reflect
  * necessary adoptions to different input sources like the file system, websites
  * or others like Android-Assets. Implemented in JKerMor are
- * {@link rmcommon.io.WebModelManager} and
- * {@link rmcommon.io.FileModelManager}.
+ * {@link rmcommon.io.WebModelManager} and {@link rmcommon.io.FileModelManager}.
  * 
  * Each manager has a root directory which must be, depending on the type,
  * either provided at instantiation or are given implicitly. The model system is
@@ -126,28 +126,30 @@ public abstract class AModelManager {
 
 			db = bf.newDocumentBuilder();
 
-			// Create the schema validator
 			InputStream in = getClass().getResourceAsStream("/model.xsd");
-			// SchemaFactory sf =
-			// SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI,
-			// "com.sun.org.apache.xerces.internal.jaxp.validation.XMLSchemaFactory",
-			// getClass().getClassLoader());
 
-			try {
-				SchemaFactory sf = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-				Schema s = sf.newSchema(new StreamSource(in));
-				dv = s.newValidator();
-			} catch (IllegalArgumentException e) {
-				/*
-				 * See constructor comment on what happens here.. Set Validator
-				 * to null if the IllegalArgumentException gets thrown
-				 */
-				dv = null;
-			}
+			// Create the schema validator (if xsd was found)
+			if (in != null) {
+				try {
+					SchemaFactory sf = SchemaFactory
+							.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+					Schema s = sf.newSchema(new StreamSource(in));
+					dv = s.newValidator();
+				} catch (IllegalArgumentException e) {
+					/*
+					 * See constructor comment on what happens here.. Set
+					 * Validator to null if the IllegalArgumentException gets
+					 * thrown
+					 */
+					dv = null;
+				}
+			} else Log.e("AModelManager", "No model.xsd validation resource found!");
 		} catch (ParserConfigurationException e) {
-			throw new RuntimeException("Error creating a XML document builder", e);
+			throw new RuntimeException("Error creating a XML document builder",
+					e);
 		} catch (SAXException e) {
-			throw new RuntimeException("Error creating a XML schema validator", e);
+			throw new RuntimeException("Error creating a XML schema validator",
+					e);
 		}
 	}
 
@@ -213,13 +215,14 @@ public abstract class AModelManager {
 	 */
 	public boolean isValidModelDir(String dir) {
 		/*
-		 *  Store current model directory if set, and temporarily set the model dir to dir.
-		 *  This is done as subclass implementations will of course depend on getModelDir() when calling
-		 *  modelFileExists().
+		 * Store current model directory if set, and temporarily set the model
+		 * dir to dir. This is done as subclass implementations will of course
+		 * depend on getModelDir() when calling modelFileExists().
 		 */
 		String olddir = mdir;
 		mdir = dir;
-		if (!modelFileExists("model.xml")) return false;
+		if (!modelFileExists("model.xml"))
+			return false;
 		try {
 			try {
 				db.parse(getInStream("model.xml"));
@@ -234,7 +237,8 @@ public abstract class AModelManager {
 				return false;
 			}
 		} catch (IOException e) {
-			throw new RuntimeException("I/O error while checking if model directory is valid.", e);
+			throw new RuntimeException(
+					"I/O error while checking if model directory is valid.", e);
 		}
 		// Restore old model dir
 		mdir = olddir;
@@ -260,8 +264,9 @@ public abstract class AModelManager {
 				modelxml = db.parse(getInStream("model.xml"));
 			} catch (Exception e) {
 				mdir = olddir;
-				throw new RuntimeException("Unexpected Exception (parsing was done already in isValidModelDir("
-						+ dir + "))", e);
+				throw new RuntimeException(
+						"Unexpected Exception (parsing was done already in isValidModelDir("
+								+ dir + "))", e);
 			}
 		} else
 			throw new ModelManagerException("Invalid model directory: " + dir);
@@ -331,7 +336,8 @@ public abstract class AModelManager {
 			// System.out.println("\nDocument body contents are:");
 			// listNodes(modelxml.getDocumentElement(),"");
 
-			NodeList nl = modelxml.getDocumentElement().getElementsByTagName(tagname);
+			NodeList nl = modelxml.getDocumentElement().getElementsByTagName(
+					tagname);
 			if (nl != null && nl.getLength() > 0) {
 				return nl.item(0).getTextContent();
 			}
@@ -417,7 +423,8 @@ public abstract class AModelManager {
 		assert attrib_name != null;
 		assert tagname != null;
 
-		NodeList nl = modelxml.getDocumentElement().getElementsByTagName(tagname);
+		NodeList nl = modelxml.getDocumentElement().getElementsByTagName(
+				tagname);
 		if (nl.getLength() > 0) {
 			return getNodeAttributeValue(nl.item(0), attrib_name);
 		}
@@ -444,7 +451,8 @@ public abstract class AModelManager {
 	 * @return True if the tag exists or false otherwise
 	 */
 	public boolean xmlTagExists(String tagname) {
-		return modelxml.getDocumentElement().getElementsByTagName(tagname).getLength() > 0;
+		return modelxml.getDocumentElement().getElementsByTagName(tagname)
+				.getLength() > 0;
 	}
 
 	/**
@@ -536,7 +544,9 @@ public abstract class AModelManager {
 						// Ignore when the image could not be loaded.
 					}
 				}
-				res.add(new ModelDescriptor(modeldir, getModelXMLTagValue("short"), getModelXMLAttribute("type"), img));
+				res.add(new ModelDescriptor(modeldir,
+						getModelXMLTagValue("short"),
+						getModelXMLAttribute("type"), img));
 			}
 		}
 		return res;

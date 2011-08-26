@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- XSD Schema for AModelManager loadable models.
- * 
- * @author Daniel Wirtz
- * @date 2011-08-23
- -->
+<!-- XSD Schema for AModelManager loadable models. * * @author Daniel Wirtz 
+	* @date 2011-08-23 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
 	elementFormDefault="qualified">
-	
+
 	<xs:element name="model">
 		<xs:complexType>
 			<xs:sequence>
@@ -14,8 +11,10 @@
 				<xs:choice minOccurs="1" maxOccurs="1">
 					<xs:element ref="kermor_model" minOccurs="0" maxOccurs="1" />
 					<xs:element ref="rb_model" minOccurs="0" maxOccurs="1" />
-					<xs:element name="rbappmit_model" minOccurs="0" maxOccurs="1" type="xs:string"/>
+					<xs:element name="rbappmit_model" minOccurs="0"
+						maxOccurs="1" type="xs:string" />
 				</xs:choice>
+				<xs:element ref="geometry" minOccurs="0" maxOccurs="1"></xs:element>
 			</xs:sequence>
 			<xs:attribute name="machformat" use="required" type="machformat" />
 			<xs:attribute name="type" use="required" type="modeltype" />
@@ -24,19 +23,23 @@
 	<xs:element name="description">
 		<xs:complexType>
 			<xs:sequence>
-				<xs:element name="name" type="xs:string" minOccurs="0" maxOccurs="1"/>
+				<xs:element name="name" type="xs:string" minOccurs="0"
+					maxOccurs="1" />
 				<xs:element name="short" type="xs:string" />
-				<xs:element name="image" type="xs:string" minOccurs="0" maxOccurs="1"/>
-				<xs:element name="infohtml" type="xs:string" minOccurs="0" maxOccurs="1"/>
+				<xs:element name="image" type="xs:string" minOccurs="0"
+					maxOccurs="1" />
+				<xs:element name="infohtml" type="xs:string" minOccurs="0"
+					maxOccurs="1" />
 			</xs:sequence>
 		</xs:complexType>
 	</xs:element>
-	
+
 	<xs:element name="parameters">
 		<xs:complexType>
 			<xs:sequence>
 				<xs:element maxOccurs="unbounded" ref="param" minOccurs="1" />
 			</xs:sequence>
+			<xs:attribute name="number" use="required" type="xs:integer" />
 		</xs:complexType>
 	</xs:element>
 	<xs:element name="param">
@@ -47,7 +50,16 @@
 			<xs:attribute name="name" use="required" type="xs:string" />
 		</xs:complexType>
 	</xs:element>
-	
+
+	<xs:element name="geometry">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="dimension" type="xs:integer" />
+				<!-- <xs:element name="nodes" type="xs:integer" /> -->
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
 	<!-- KERMOR model part -->
 	<xs:element name="kermor_model">
 		<xs:complexType>
@@ -82,43 +94,52 @@
 	<xs:element name="initialvaluetype" type="matlab_classidentifier" />
 
 	<!-- RB model parts -->
-    <xs:element name="rb_model">
-    	<xs:complexType>
-    		<xs:sequence>
+	<xs:element name="rb_model">
+		<xs:complexType>
+			<xs:sequence>
 				<xs:element name="systype" type="xs:string" />
 				<xs:element ref="scmtype" />
+				<xs:element ref="timeinfo" minOccurs="0" maxOccurs="1"/>
+				<xs:element ref="parameters" minOccurs="0" maxOccurs="1" />
 			</xs:sequence>
-    		<xs:attribute name="n_bfs" use="required" type="xs:integer" />
-    		<xs:attribute name="Qa" use="required" type="xs:integer" />
-    		<xs:attribute name="Qf" use="required" type="xs:integer" />
-    		<xs:attribute name="Nmax" use="required" type="xs:integer" />
-    		<xs:attribute name="fields" use="required" type="xs:integer" />
-    		<xs:attribute name="outputs" use="required" type="xs:integer" />
-    		<xs:attribute name="K" use="required" type="xs:integer" />
-    		<xs:attribute name="euler_theta" use="required" type="xs:double" />
-    	</xs:complexType>
-    </xs:element>
-    <xs:element name="scmtype">
-    	<xs:complexType>
-    		<xs:attribute name="M" use="optional" type="xs:integer"/>
-    	</xs:complexType>
-    </xs:element>
-
+			<xs:attribute name="num_basisfcn" use="required" type="xs:integer" />
+			<xs:attribute name="Qa" use="required" type="xs:integer" />
+			<xs:attribute name="Qf" use="required" type="xs:integer" />
+			<xs:attribute name="Nmax" use="required" type="xs:integer" />
+			<xs:attribute name="fields" use="required" type="xs:integer" />
+			<xs:attribute name="outputs" use="required" type="xs:integer" />
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="timeinfo">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="dt" type="xs:double"></xs:element>
+				<xs:element name="K" type="xs:integer"></xs:element>
+				<xs:element name="euler_theta" type="xs:double"></xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="scmtype">
+		<xs:complexType>
+			<xs:attribute name="M" use="optional" type="xs:integer" />
+		</xs:complexType>
+	</xs:element>
+	
 	<!-- custom types -->
-    <xs:simpleType name="matlab_classidentifier">
-    	<xs:restriction base="xs:string"></xs:restriction>
-    </xs:simpleType>
-    <xs:simpleType name="machformat">
-    	<xs:restriction base="xs:string">
-    		<xs:enumeration value="le"></xs:enumeration>
-    		<xs:enumeration value="be"></xs:enumeration>
-    	</xs:restriction>
-    </xs:simpleType>
-    <xs:simpleType name="modeltype">
-    	<xs:restriction base="xs:string">
-    		<xs:enumeration value="rb"></xs:enumeration>
-    		<xs:enumeration value="kermor"></xs:enumeration>
-    		<xs:enumeration value="rbappmit"></xs:enumeration>
-    	</xs:restriction>
-    </xs:simpleType>
+	<xs:simpleType name="matlab_classidentifier">
+		<xs:restriction base="xs:string"></xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="machformat">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="le"></xs:enumeration>
+			<xs:enumeration value="be"></xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="modeltype">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="rb"></xs:enumeration>
+			<xs:enumeration value="kermor"></xs:enumeration>
+			<xs:enumeration value="rbappmit"></xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
 </xs:schema>

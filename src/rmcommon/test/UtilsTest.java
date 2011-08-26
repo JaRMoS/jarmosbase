@@ -7,8 +7,6 @@ import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
-import rmcommon.Util;
-
 /**
  * @author Ernst
  *
@@ -20,11 +18,11 @@ public class UtilsTest {
 	 */
 	@Test
 	public void testLinspace() {
-		double a = 0;
-		double b = 10;
-		double[] s = Util.linspace(a, b, 10);
-		
-		fail("Not yet implemented");
+//		double a = 0;
+//		double b = 10;
+//		double[] s = Util.linspace(a, b, 10);
+//		
+//		fail("Not yet implemented");
 	}
 
 	/**

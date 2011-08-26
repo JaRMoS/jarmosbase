@@ -27,27 +27,29 @@ import java.io.InputStream;
 
 /**
  * Wraps the old BinaryReader into a Data
+ * 
  * @author CreaByte
- *
+ * 
  */
 public class LittleEndianDataInput implements DataInput {
 
 	DataInputStream in;
-	
+
 	/**
 	 * Takes an InputStream instance pointing to a binary file.
-	 * @param in The inputstream to read the values from
+	 * 
+	 * @param in
+	 *            The inputstream to read the values from
 	 */
 	public LittleEndianDataInput(InputStream in) {
 		this.in = new DataInputStream(in);
 	}
-	
+
 	@Override
 	protected void finalize() {
 		try {
 			this.in.close();
-		}
-		catch (IOException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
@@ -57,16 +59,12 @@ public class LittleEndianDataInput implements DataInput {
 	 * @param _size
 	 * @return
 	 */
-	public float[] readFloat(int _size) {
+	public float[] readFloat(int _size) throws IOException {
 		float[] ofloat = new float[_size];
 		int i = 0;
 		byte[] tmp = new byte[4 * _size];
-		try {
-			for (i = 0; i < 4 * _size; i++)
-				tmp[i] = in.readByte();
-		} catch (IOException e) {
-			throw new RuntimeException("Error reading data", e);
-		}
+		for (i = 0; i < 4 * _size; i++)
+			tmp[i] = in.readByte();
 		int accum;
 		for (int count = 0; count < _size; count++) {
 			accum = 0;
@@ -94,7 +92,7 @@ public class LittleEndianDataInput implements DataInput {
 	@Override
 	public void readFully(byte[] b, int off, int len) throws IOException {
 		throw new RuntimeException("Not implemented.");
-		
+
 	}
 
 	/**
@@ -160,12 +158,8 @@ public class LittleEndianDataInput implements DataInput {
 	public int readInt() throws IOException {
 		int i = 0;
 		byte[] tmp = new byte[2];
-		try {
-			for (i = 0; i < 2; i++)
-				tmp[i] = in.readByte();
-		} catch (IOException e) {
-			throw new RuntimeException("Error reading data", e);
-		}
+		for (i = 0; i < 2; i++)
+			tmp[i] = in.readByte();
 		int low = tmp[0] & 0xff;
 		int high = tmp[1] & 0xff;
 		return (int) (high << 8 | low);
@@ -178,12 +172,8 @@ public class LittleEndianDataInput implements DataInput {
 	public long readLong() throws IOException {
 		int i = 0;
 		byte[] tmp = new byte[4];
-		try {
-			for (i = 0; i < 4; i++)
-				tmp[i] = in.readByte();
-		} catch (IOException e) {
-			throw new RuntimeException("Error reading data", e);
-		}
+		for (i = 0; i < 4; i++)
+			tmp[i] = in.readByte();
 		long accum = 0;
 		i = 0;
 		for (int shiftBy = 0; shiftBy < 32; shiftBy += 8) {
@@ -200,12 +190,8 @@ public class LittleEndianDataInput implements DataInput {
 	public float readFloat() throws IOException {
 		int i = 0;
 		byte[] tmp = new byte[4];
-		try {
-			for (i = 0; i < 4; i++)
-				tmp[i] = in.readByte();
-		} catch (IOException e) {
-			throw new RuntimeException("Error reading data", e);
-		}
+		for (i = 0; i < 4; i++)
+			tmp[i] = in.readByte();
 		int accum = 0;
 		i = 0;
 		for (int shiftBy = 0; shiftBy < 32; shiftBy += 8) {
@@ -222,12 +208,8 @@ public class LittleEndianDataInput implements DataInput {
 	public double readDouble() throws IOException {
 		int i = 0;
 		byte[] tmp = new byte[8];
-		try {
-			for (i = 0; i < 8; i++)
-				tmp[i] = in.readByte();
-		} catch (IOException e) {
-			throw new RuntimeException("Error reading data", e);
-		}
+		for (i = 0; i < 8; i++)
+			tmp[i] = in.readByte();
 		long accum = 0;
 		i = 0;
 		for (int shiftBy = 0; shiftBy < 64; shiftBy += 8) {
