@@ -13,6 +13,7 @@
     <selectedElements exportClassFiles="true" exportJavaFiles="true" exportOutputFolder="false">
         <javaElement handleIdentifier="=JRMCommons/src"/>
         <folder path="/JRMCommons/test"/>
+        <file path="/JRMCommons/notfound.png"/>
         <file path="/JRMCommons/model.xsd"/>
     </selectedElements>
 </jardesc>

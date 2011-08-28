@@ -29,11 +29,20 @@ public class GeometryData extends Object {
 									// to
 	private int[] domain_of_face; // tell us which subdomain our faces belong to
 
-	// the bounding box (xyz range) of the model
+	/**
+	 * the bounding box (xyz range) of the model
+	 */
 	public float[] nminmax = { 1e9f, 1e9f, 1e9f, -1e9f, -1e9f, -1e9f };
 
-	public int nodes; // number of vertices
-	public int faces; // number of faces
+	/**
+	 * number of vertices
+	 */
+	public int nodes;
+
+	/**
+	 * number of faces
+	 */
+	public int faces;
 
 	/**
 	 * The node coordinate vector of size 3*nodes, each node described by

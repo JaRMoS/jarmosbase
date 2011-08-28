@@ -55,7 +55,7 @@
 		<xs:complexType>
 			<xs:sequence>
 				<xs:element name="dimension" type="xs:integer" />
-				<!-- <xs:element name="nodes" type="xs:integer" /> -->
+				<xs:element name="nodes" type="xs:integer" />
 			</xs:sequence>
 		</xs:complexType>
 	</xs:element>
@@ -98,13 +98,8 @@
 		<xs:complexType>
 			<xs:sequence>
 				<xs:element name="systype" type="xs:string" />
-				<xs:element name="scmtype" type="xs:string">
-					<xs:complexType>
-						<xs:attribute name="M" use="optional"
-							type="xs:integer" />
-					</xs:complexType>
-				</xs:element>
-				<xs:element ref="timeinfo" minOccurs="0" maxOccurs="1"/>
+				<xs:element ref="scmtype" />
+				<xs:element ref="timeinfo" minOccurs="0" maxOccurs="1" />
 				<xs:element ref="parameters" minOccurs="0" maxOccurs="1" />
 			</xs:sequence>
 			<xs:attribute name="num_basisfcn" use="required" type="xs:integer" />
@@ -123,8 +118,21 @@
 				<xs:element name="euler_theta" type="xs:double"></xs:element>
 			</xs:sequence>
 		</xs:complexType>
-	</xs:element>	
-	
+	</xs:element>
+	<xs:element name="scmtype">
+		<xs:complexType>
+			<xs:simpleContent>
+				<xs:extension base="xs:string">
+					<xs:attribute name="M" use="optional" type="xs:integer" />
+				</xs:extension>
+			</xs:simpleContent>
+		</xs:complexType>
+	</xs:element>
+	<!-- Complex Type Definition Representation Error for type '#AnonType_scmtype'. 
+		When <simpleContent> is used, the base type must be a complexType whose content 
+		type is simple, or, only if restriction is specified, a complex type with 
+		mixed content and emptiable particle, or, only if extension is specified, 
+		a simple type. 'string' satisfies none of these conditions. -->
 	<!-- custom types -->
 	<xs:simpleType name="matlab_classidentifier">
 		<xs:restriction base="xs:string"></xs:restriction>

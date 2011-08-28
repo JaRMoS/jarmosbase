@@ -215,7 +215,8 @@ public abstract class AModelManager {
 	 * @throws IOException
 	 */
 	public final InputStream getInStream(String filename) throws IOException {
-		sendMessage(filename);
+		int pos = filename.indexOf(".bin");
+		sendMessage((pos > -1) ? filename.substring(0, pos) : filename);
 		return getInStreamImpl(filename);
 	}
 
@@ -265,13 +266,14 @@ public abstract class AModelManager {
 				setModelDir(modeldir);
 				InputStream img = null;
 				String imgfile = getModelXMLTagValue("description.image");
-				if (imgfile != null) {
+				if (modelFileExists(imgfile)) {
 					try {
 						img = getInStream(imgfile);
 					} catch (IOException e) {
-						// Ignore when the image could not be loaded.
+						// ignore
 					}
-				}
+				} else
+					img = getClassLoader().getResourceAsStream("notfound.png");
 				res.add(new ModelDescriptor(modeldir, getModelXMLTagValue("description.short"), getModelXMLAttribute("type"), img));
 			}
 		}
@@ -397,6 +399,7 @@ public abstract class AModelManager {
 				Node n = nl.item(i);
 				p.addParam(getNodeAttributeValue(n, "name"), Double.parseDouble(getNodeAttributeValue(n, "min")), Double.parseDouble(getNodeAttributeValue(n, "max")));
 			}
+			return p;
 		}
 		return null;
 	}
@@ -409,11 +412,15 @@ public abstract class AModelManager {
 	 * Schema is somehow NOT implemented; so, validation is skipped on android
 	 * platforms.
 	 * 
+	 * @pre dir != null
+	 * 
 	 * @param dir
 	 *            The directory to check
 	 * @return True if the directory contains a valid model, false otherwise
 	 */
 	public boolean isValidModelDir(String dir) {
+		assert dir != null;
+
 		/*
 		 * Store current model directory if set, and temporarily set the model
 		 * dir to dir. This is done as subclass implementations will of course
@@ -433,6 +440,7 @@ public abstract class AModelManager {
 					dv.validate(new DOMSource(modelxml));
 				}
 			} catch (SAXException se) {
+				Log.e("AModelManager", "Invalid model.xml: " + se.getMessage(), se);
 				return false;
 			}
 		} catch (IOException e) {
@@ -465,9 +473,13 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * Attempts to set the current directory as model directory. If the
-	 * specified directory does not contain an model.xml file or the file does
-	 * not comply with the model.xsd schema, an exception is thrown.
+	 * Sets the current directory as model directory.
+	 * 
+	 * Requires the
+	 * 
+	 * @pre isValidModelDir(dir) == true
+	 * @post The model directory is set to dir and calls to getInStream etc.
+	 *       will serve files from dir.
 	 * 
 	 * @param dir
 	 *            The directory to change to
@@ -475,38 +487,15 @@ public abstract class AModelManager {
 	 *             The current model directory does not contain a valid model.
 	 */
 	public void setModelDir(String dir) throws ModelManagerException {
-		String olddir = mdir;
-		this.mdir = dir;
+		assert isValidModelDir(dir);
 
-		if (isValidModelDir(dir)) {
-			try {
-				modelxml = db.parse(getInStream("model.xml"));
-			} catch (Exception e) {
-				mdir = olddir;
-				throw new RuntimeException("Unexpected Exception (parsing was done already in isValidModelDir("
-						+ dir + "))", e);
-			}
-		} else
-			throw new ModelManagerException("Invalid model directory: " + dir);
-		// try {
-		//
-		//
-		// try {
-		// if (dv != null) {
-		// dv.validate(new DOMSource(modelxml));
-		// }
-		// } catch (SAXException se) {
-		// mdir = olddir;
-		// throw new
-		// ModelManagerException("model.xml validation failed for model in "
-		// + dir, se);
-		// }
-		// } catch (IOException e) {
-		// mdir = olddir;
-		// throw new
-		// ModelManagerException("I/O error when accessing model.xml in "
-		// + dir, e);
-		// }
+		this.mdir = dir;
+		try {
+			modelxml = db.parse(getInStream("model.xml"));
+		} catch (Exception e) {
+			throw new RuntimeException("Unexpected Exception in AModelManager.setModelDir: "
+					+ e.getMessage(), e);
+		}
 
 		modelxml.normalize();
 		modelnode = modelxml.getElementsByTagName("model").item(0);
