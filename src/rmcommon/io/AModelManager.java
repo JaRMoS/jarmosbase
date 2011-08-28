@@ -18,6 +18,7 @@ import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
@@ -25,6 +26,7 @@ import org.xml.sax.SAXException;
 import rmcommon.IMessageHandler;
 import rmcommon.Log;
 import rmcommon.ModelDescriptor;
+import rmcommon.Parameters;
 import rmcommon.io.MathObjectReader.MachineFormats;
 
 /***
@@ -51,14 +53,6 @@ import rmcommon.io.MathObjectReader.MachineFormats;
  * 
  */
 public abstract class AModelManager {
-
-	/**
-	 * The name of the jar file inside a models directory containing .class
-	 * files in java bytecode. This file name can be used inside custom
-	 * implementations of getClassLoader, if directory searches are not
-	 * permitted/implemented (e.g. WebModelManager)
-	 */
-	public static final String CLASSES_JARFILE = "classes.jar";
 
 	/**
 	 * This Exception gets thrown when an error occurs regarding the
@@ -89,19 +83,27 @@ public abstract class AModelManager {
 	}
 
 	/**
+	 * The name of the jar file inside a models directory containing .class
+	 * files in java bytecode. This file name can be used inside custom
+	 * implementations of getClassLoader, if directory searches are not
+	 * permitted/implemented (e.g. WebModelManager)
+	 */
+	public static final String CLASSES_JARFILE = "classes.jar";
+
+	/**
 	 * The model's info html file name (imported from rbappmit, might change
 	 * later)
 	 */
 	public static final String info_filename = "site_info.html";
 
-	private String mdir = "notset";
 	private DocumentBuilder db = null;
 	private Validator dv = null;
-	private Document modelxml = null;
-	private Node modelnode = null;
-	private MathObjectReader mor = null;
-
+	private String mdir = "notset";
 	private List<IMessageHandler> mhandlers;
+	private Node modelnode = null;
+	private Document modelxml = null;
+
+	private MathObjectReader mor = null;
 
 	/**
 	 * Constructs a new ModelManager and a private DocumentBuilder and
@@ -131,8 +133,7 @@ public abstract class AModelManager {
 			// Create the schema validator (if xsd was found)
 			if (in != null) {
 				try {
-					SchemaFactory sf = SchemaFactory
-							.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+					SchemaFactory sf = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
 					Schema s = sf.newSchema(new StreamSource(in));
 					dv = s.newValidator();
 				} catch (IllegalArgumentException e) {
@@ -143,22 +144,35 @@ public abstract class AModelManager {
 					 */
 					dv = null;
 				}
-			} else Log.e("AModelManager", "No model.xsd validation resource found!");
+			} else
+				Log.e("AModelManager", "No model.xsd validation resource found!");
 		} catch (ParserConfigurationException e) {
-			throw new RuntimeException("Error creating a XML document builder",
-					e);
+			throw new RuntimeException("Error creating a XML document builder", e);
 		} catch (SAXException e) {
-			throw new RuntimeException("Error creating a XML schema validator",
-					e);
+			throw new RuntimeException("Error creating a XML schema validator", e);
 		}
 	}
 
 	/**
-	 * 
-	 * @return The directory of the current model.
+	 * @param h
 	 */
-	public String getModelDir() {
-		return mdir;
+	public void addMessageHandler(IMessageHandler h) {
+		mhandlers.add(h);
+	}
+
+	/**
+	 * 
+	 * @param filename
+	 * @return A buffered reader with 8192 bytes buffer, pointing at the file
+	 *         specified.
+	 * @throws IOException
+	 * @deprecated Dont use, only here for old rbappmit model loading.
+	 */
+	public BufferedReader getBufReader(String filename) throws IOException {
+		int buffer_size = 8192;
+
+		InputStreamReader isr = new InputStreamReader(getInStream(filename));
+		return new BufferedReader(isr, buffer_size);
 	}
 
 	/**
@@ -181,14 +195,43 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * Returns the model type as given in the model.xml attribute "type" of the
-	 * "model" tag.
 	 * 
-	 * @return The model type as string
+	 * Returns the list of all models directories available at the ModelManagers
+	 * source location. At this stage, no validity checks have to be performed
+	 * regarding if a returned folder actually contains a valid model.
+	 * 
+	 * @return
+	 * @throws IOException
 	 */
-	public String getModelType() {
-		return getModelXMLAttribute("type");
+	protected abstract String[] getFolderList() throws IOException;
+
+	/**
+	 * Returns an InputStream instance streaming the contents of the file given
+	 * by filename.
+	 * 
+	 * @param filename
+	 *            The model file to return a stream for
+	 * @return An InputStream pointing to the resource
+	 * @throws IOException
+	 */
+	public final InputStream getInStream(String filename) throws IOException {
+		sendMessage(filename);
+		return getInStreamImpl(filename);
 	}
+
+	/**
+	 * Template method.
+	 * 
+	 * Implementations of this method must locate the given file inside the
+	 * current model directory and return an input stream pointing to it.
+	 * 
+	 * @param filename
+	 *            The model file to return a stream for
+	 * @return An InputStream pointing to the resource
+	 * @throws IOException
+	 */
+	protected abstract InputStream getInStreamImpl(String filename)
+			throws IOException;
 
 	/**
 	 * Use this method in order to get a MathObjectReader instance fitted for
@@ -199,6 +242,163 @@ public abstract class AModelManager {
 	 */
 	public MathObjectReader getMathObjReader() {
 		return mor;
+	}
+
+	/**
+	 * Scans all directories given by getFolderList() for valid models and
+	 * returns a list of model descriptors for each valid model.
+	 * 
+	 * @return A list of ModelDescriptors
+	 * @throws ModelManagerException
+	 */
+	public List<ModelDescriptor> getModelDescriptors()
+			throws ModelManagerException {
+		ArrayList<ModelDescriptor> res = new ArrayList<ModelDescriptor>();
+		String[] list = null;
+		try {
+			list = getFolderList();
+		} catch (IOException e) {
+			throw new ModelManagerException("Listing model folders failed.", e);
+		}
+		for (String modeldir : list) {
+			if (isValidModelDir(modeldir)) {
+				setModelDir(modeldir);
+				InputStream img = null;
+				String imgfile = getModelXMLTagValue("description.image");
+				if (imgfile != null) {
+					try {
+						img = getInStream(imgfile);
+					} catch (IOException e) {
+						// Ignore when the image could not be loaded.
+					}
+				}
+				res.add(new ModelDescriptor(modeldir, getModelXMLTagValue("description.short"), getModelXMLAttribute("type"), img));
+			}
+		}
+		return res;
+	}
+
+	/**
+	 * 
+	 * @return The directory of the current model.
+	 */
+	public String getModelDir() {
+		return mdir;
+	}
+
+	/**
+	 * Returns the model type as given in the model.xml attribute "type" of the
+	 * "model" tag.
+	 * 
+	 * @return The model type as string
+	 */
+	public String getModelType() {
+		return getModelXMLAttribute("type");
+	}
+
+	/**
+	 * Returns the attribute value of any attributes of the "model" tag in the
+	 * model.xml file. Returns null if no model directory has been set or the
+	 * attribute does not exist.
+	 * 
+	 * @param attrib_name
+	 *            The attribute's name
+	 * @return The attribute value or null if the attribute does not exist
+	 */
+	public String getModelXMLAttribute(String attrib_name) {
+		assert attrib_name != null;
+
+		if (modelnode != null) {
+			return getNodeAttributeValue(modelnode, attrib_name);
+		}
+		return null;
+	}
+
+	/**
+	 * Returns the attribute value of any attributes of the tag given by tagname
+	 * in the model.xml file. Returns null if no model directory has been set or
+	 * the attribute does not exist.
+	 * 
+	 * @param attrib_name
+	 *            the attribute's name
+	 * @param tagname
+	 *            The xml tag whos attributes are to be searched.
+	 * @return The attribute value or null if the attribute does not exist
+	 */
+	public String getModelXMLAttribute(String attrib_name, String tagname) {
+		assert attrib_name != null;
+		assert tagname != null;
+
+		Element e = getModelXMLElement(tagname);
+		return (e != null) ? getNodeAttributeValue(e, attrib_name) : null;
+	}
+
+	private Element getModelXMLElement(String tags) {
+		if (modelxml != null) {
+			Element cur = modelxml.getDocumentElement();
+			String[] elems = tags.split("\\.");
+			for (String elem : elems) {
+				NodeList nl = cur.getElementsByTagName(elem);
+				if (nl != null && nl.getLength() > 0) {
+					cur = (Element) nl.item(0);
+				} else {
+					cur = null;
+					break;
+				}
+			}
+			if (cur != null) {
+				return cur;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Returns the text content of a tag inside the model.xml file.
+	 * 
+	 * The tag given may be separated by a dot, so that a clear position can be
+	 * addressed. So "description.name" will look up any tags named
+	 * "description" and search therein for any tags named "name". Always the
+	 * first item with a corresponding name is returned.
+	 * 
+	 * @param tagname
+	 *            The tag whos value should be returned.
+	 * @return The tag text content or null if no matching tag is found.
+	 */
+	public String getModelXMLTagValue(String tagname) {
+		Element res = getModelXMLElement(tagname);
+		return (res != null) ? res.getTextContent() : null;
+	}
+
+	private String getNodeAttributeValue(Node n, String attrib_name) {
+		assert n != null;
+		assert attrib_name != null;
+
+		Node a = n.getAttributes().getNamedItem(attrib_name);
+		if (a != null) {
+			return a.getNodeValue();
+		} else
+			return null;
+	}
+
+	/**
+	 * Reads the parameters from the model XML file and returns a Parameters
+	 * object.
+	 * 
+	 * @return A Parameters object or null if the model definition does not
+	 *         contain parameters.
+	 */
+	public Parameters getParameters() {
+		Element params = getModelXMLElement("parameters");
+		if (params != null) {
+			Parameters p = new Parameters();
+			NodeList nl = params.getElementsByTagName("param");
+			for (int i = 0; i < nl.getLength(); i++) {
+				Node n = nl.item(i);
+				p.addParam(getNodeAttributeValue(n, "name"), Double.parseDouble(getNodeAttributeValue(n, "min")), Double.parseDouble(getNodeAttributeValue(n, "max")));
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -221,8 +421,7 @@ public abstract class AModelManager {
 		 */
 		String olddir = mdir;
 		mdir = dir;
-		if (!modelFileExists("model.xml"))
-			return false;
+		if (!modelFileExists("model.xml")) return false;
 		try {
 			try {
 				db.parse(getInStream("model.xml"));
@@ -237,12 +436,32 @@ public abstract class AModelManager {
 				return false;
 			}
 		} catch (IOException e) {
-			throw new RuntimeException(
-					"I/O error while checking if model directory is valid.", e);
+			throw new RuntimeException("I/O error while checking if model directory is valid.", e);
 		}
 		// Restore old model dir
 		mdir = olddir;
 		return true;
+	}
+
+	/**
+	 * Returns whether the specified file exists in the current model folder.
+	 * 
+	 * @param filename
+	 * @return true if the file exists in the model, false otherwise
+	 */
+	public abstract boolean modelFileExists(String filename);
+
+	/**
+	 * @param h
+	 */
+	public void removeMessageHandler(IMessageHandler h) {
+		mhandlers.remove(h);
+	}
+
+	protected void sendMessage(String msg) {
+		for (IMessageHandler h : mhandlers) {
+			h.sendMessage(msg);
+		}
 	}
 
 	/**
@@ -264,9 +483,8 @@ public abstract class AModelManager {
 				modelxml = db.parse(getInStream("model.xml"));
 			} catch (Exception e) {
 				mdir = olddir;
-				throw new RuntimeException(
-						"Unexpected Exception (parsing was done already in isValidModelDir("
-								+ dir + "))", e);
+				throw new RuntimeException("Unexpected Exception (parsing was done already in isValidModelDir("
+						+ dir + "))", e);
 			}
 		} else
 			throw new ModelManagerException("Invalid model directory: " + dir);
@@ -304,145 +522,6 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * @param h
-	 */
-	public void addMessageHandler(IMessageHandler h) {
-		mhandlers.add(h);
-	}
-
-	/**
-	 * @param h
-	 */
-	public void removeMessageHandler(IMessageHandler h) {
-		mhandlers.remove(h);
-	}
-
-	protected void sendMessage(String msg) {
-		for (IMessageHandler h : mhandlers) {
-			h.sendMessage(msg);
-		}
-	}
-
-	/**
-	 * Returns the text content of a tag inside the model.xml file.
-	 * 
-	 * @param tagname
-	 *            The tag whos value should be returned.
-	 * @return The tag text content or null if none found.
-	 */
-	public String getModelXMLTagValue(String tagname) {
-		if (modelxml != null) {
-
-			// System.out.println("\nDocument body contents are:");
-			// listNodes(modelxml.getDocumentElement(),"");
-
-			NodeList nl = modelxml.getDocumentElement().getElementsByTagName(
-					tagname);
-			if (nl != null && nl.getLength() > 0) {
-				return nl.item(0).getTextContent();
-			}
-		}
-		// if (modelnode != null) {
-		// NodeList nl = modelnode.getChildNodes();
-		// if (nl != null) {
-		// for (int i = 0; i < nl.getLength(); i++) {
-		// Node c = nl.item(i);
-		// if (tagname.equals(c.getNodeName())) {
-		// return c.getTextContent();
-		// }
-		// }
-		// }
-		// }
-		return null;
-	}
-
-	// private void listNodes(Node node, String indent) {
-	// String nodeName = node.getNodeName();
-	// System.out.println(indent+" Node: " + nodeName);
-	// short type = node.getNodeType();
-	// System.out.println(indent+" Node Type: " + nodeType(type));
-	// if(type == TEXT_NODE){
-	// System.out.println(indent+" Content is: "+((Text)node).getWholeText());
-	// }
-	//
-	// NodeList list = node.getChildNodes();
-	// if(list.getLength() > 0) {
-	// System.out.println(indent+" Child Nodes of "+nodeName+" are:");
-	// for(int i = 0 ; i<list.getLength() ; i++) {
-	// listNodes(list.item(i),indent+"  ");
-	// }
-	// }
-	// }
-	//
-	// private String nodeType(short type) {
-	// switch(type) {
-	// case ELEMENT_NODE: return "Element";
-	// case DOCUMENT_TYPE_NODE: return "Document type";
-	// case ENTITY_NODE: return "Entity";
-	// case ENTITY_REFERENCE_NODE: return "Entity reference";
-	// case NOTATION_NODE: return "Notation";
-	// case TEXT_NODE: return "Text";
-	// case COMMENT_NODE: return "Comment";
-	// case CDATA_SECTION_NODE: return "CDATA Section";
-	// case ATTRIBUTE_NODE: return "Attribute";
-	// case PROCESSING_INSTRUCTION_NODE: return "Attribute";
-	// }
-	// return "Unidentified";
-	// }
-
-	/**
-	 * Returns the attribute value of any attributes of the "model" tag in the
-	 * model.xml file. Returns null if no model directory has been set or the
-	 * attribute does not exist.
-	 * 
-	 * @param attrib_name
-	 *            The attribute's name
-	 * @return The attribute value or null if the attribute does not exist
-	 */
-	public String getModelXMLAttribute(String attrib_name) {
-		assert attrib_name != null;
-
-		if (modelnode != null) {
-			return getNodeAttributeValue(modelnode, attrib_name);
-		}
-		return null;
-	}
-
-	/**
-	 * Returns the attribute value of any attributes of the tag given by tagname
-	 * in the model.xml file. Returns null if no model directory has been set or
-	 * the attribute does not exist.
-	 * 
-	 * @param attrib_name
-	 *            the attribute's name
-	 * @param tagname
-	 *            The xml tag whos attributes are to be searched.
-	 * @return The attribute value or null if the attribute does not exist
-	 */
-	public String getModelXMLAttribute(String attrib_name, String tagname) {
-		assert attrib_name != null;
-		assert tagname != null;
-
-		NodeList nl = modelxml.getDocumentElement().getElementsByTagName(
-				tagname);
-		if (nl.getLength() > 0) {
-			return getNodeAttributeValue(nl.item(0), attrib_name);
-		}
-		return null;
-	}
-
-	private String getNodeAttributeValue(Node n, String attrib_name) {
-		assert n != null;
-		assert attrib_name != null;
-
-		Node a = n.getAttributes().getNamedItem(attrib_name);
-		if (a != null) {
-			return a.getNodeValue();
-		} else
-			return null;
-	}
-
-	/**
 	 * Checks if a specified tag exists inside the current models model.xml
 	 * file.
 	 * 
@@ -451,104 +530,6 @@ public abstract class AModelManager {
 	 * @return True if the tag exists or false otherwise
 	 */
 	public boolean xmlTagExists(String tagname) {
-		return modelxml.getDocumentElement().getElementsByTagName(tagname)
-				.getLength() > 0;
-	}
-
-	/**
-	 * 
-	 * Returns the list of all models directories available at the ModelManagers
-	 * source location. At this stage, no validity checks have to be performed
-	 * regarding if a returned folder actually contains a valid model.
-	 * 
-	 * @return
-	 * @throws IOException
-	 */
-	protected abstract String[] getFolderList() throws IOException;
-
-	/**
-	 * Returns whether the specified file exists in the current model folder.
-	 * 
-	 * @param filename
-	 * @return true if the file exists in the model, false otherwise
-	 */
-	public abstract boolean modelFileExists(String filename);
-
-	/**
-	 * Returns an InputStream instance streaming the contents of the file given
-	 * by filename.
-	 * 
-	 * @param filename
-	 *            The model file to return a stream for
-	 * @return An InputStream pointing to the resource
-	 * @throws IOException
-	 */
-	public final InputStream getInStream(String filename) throws IOException {
-		sendMessage(filename);
-		return getInStreamImpl(filename);
-	}
-
-	/**
-	 * Template method.
-	 * 
-	 * Implementations of this method must locate the given file inside the
-	 * current model directory and return an input stream pointing to it.
-	 * 
-	 * @param filename
-	 *            The model file to return a stream for
-	 * @return An InputStream pointing to the resource
-	 * @throws IOException
-	 */
-	protected abstract InputStream getInStreamImpl(String filename)
-			throws IOException;
-
-	/**
-	 * 
-	 * @param filename
-	 * @return A buffered reader with 8192 bytes buffer, pointing at the file
-	 *         specified.
-	 * @throws IOException
-	 */
-	public BufferedReader getBufReader(String filename) throws IOException {
-		int buffer_size = 8192;
-
-		InputStreamReader isr = new InputStreamReader(getInStream(filename));
-		return new BufferedReader(isr, buffer_size);
-	}
-
-	/**
-	 * Scans all directories given by getFolderList() for valid models and
-	 * returns a list of model descriptors for each valid model.
-	 * 
-	 * @return A list of ModelDescriptors
-	 * @throws ModelManagerException
-	 */
-	public List<ModelDescriptor> getModelDescriptors()
-			throws ModelManagerException {
-		ArrayList<ModelDescriptor> res = new ArrayList<ModelDescriptor>();
-		String[] list = null;
-		try {
-			list = getFolderList();
-		} catch (IOException e) {
-			throw new ModelManagerException("Listing model folders failed.", e);
-		}
-		for (String modeldir : list) {
-			if (isValidModelDir(modeldir)) {
-				setModelDir(modeldir);
-				InputStream img = null;
-				String imgfile = getModelXMLTagValue("image");
-				if (imgfile != null) {
-					try {
-						img = getInStream(imgfile);
-					} catch (IOException e) {
-						// Ignore when the image could not be loaded.
-					}
-				}
-				res.add(new ModelDescriptor(modeldir,
-						getModelXMLTagValue("short"),
-						getModelXMLAttribute("type"), img));
-			}
-		}
-		return res;
+		return modelxml.getDocumentElement().getElementsByTagName(tagname).getLength() > 0;
 	}
 }

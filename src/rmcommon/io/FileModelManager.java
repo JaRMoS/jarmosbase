@@ -30,6 +30,9 @@ public class FileModelManager extends AModelManager {
 	 */
 	public FileModelManager(String root) {
 		super();
+		if (!new File(root).exists()) {
+			throw new IllegalArgumentException("Directory does not exist: '"+root+"'");
+		}
 		this.root = root;
 	}
 
@@ -75,8 +78,9 @@ public class FileModelManager extends AModelManager {
 	 */
 	@Override
 	public boolean modelFileExists(String filename) {
-		return new File(root + File.separator + getModelDir() + File.separator
-				+ filename).exists();
+		String file = root + File.separator + getModelDir() + File.separator
+				+ filename;
+		return new File(file).exists();
 	}
 
 	protected String getFullModelPath() {

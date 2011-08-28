@@ -98,7 +98,12 @@
 		<xs:complexType>
 			<xs:sequence>
 				<xs:element name="systype" type="xs:string" />
-				<xs:element ref="scmtype" />
+				<xs:element name="scmtype" type="xs:string">
+					<xs:complexType>
+						<xs:attribute name="M" use="optional"
+							type="xs:integer" />
+					</xs:complexType>
+				</xs:element>
 				<xs:element ref="timeinfo" minOccurs="0" maxOccurs="1"/>
 				<xs:element ref="parameters" minOccurs="0" maxOccurs="1" />
 			</xs:sequence>
@@ -118,12 +123,7 @@
 				<xs:element name="euler_theta" type="xs:double"></xs:element>
 			</xs:sequence>
 		</xs:complexType>
-	</xs:element>
-	<xs:element name="scmtype">
-		<xs:complexType>
-			<xs:attribute name="M" use="optional" type="xs:integer" />
-		</xs:complexType>
-	</xs:element>
+	</xs:element>	
 	
 	<!-- custom types -->
 	<xs:simpleType name="matlab_classidentifier">
