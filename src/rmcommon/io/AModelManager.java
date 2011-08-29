@@ -356,6 +356,15 @@ public abstract class AModelManager {
 	}
 
 	/**
+	 * Works as the overload with default value, but returns null if no matchin element is found.
+	 * @param tagname
+	 * @return The tag value or null.
+	 */
+	public String getModelXMLTagValue(String tagname) {
+		return getModelXMLTagValue(tagname, null);
+	}
+	
+	/**
 	 * Returns the text content of a tag inside the model.xml file.
 	 * 
 	 * The tag given may be separated by a dot, so that a clear position can be
@@ -365,11 +374,12 @@ public abstract class AModelManager {
 	 * 
 	 * @param tagname
 	 *            The tag whos value should be returned.
-	 * @return The tag text content or null if no matching tag is found.
+	 * @param default_value The default value if no matching element is found
+	 * @return The tag text content or the default value if no matching tag is found.
 	 */
-	public String getModelXMLTagValue(String tagname) {
+	public String getModelXMLTagValue(String tagname, String default_value) {
 		Element res = getModelXMLElement(tagname);
-		return (res != null) ? res.getTextContent() : null;
+		return (res != null) ? res.getTextContent() : default_value;
 	}
 
 	private String getNodeAttributeValue(Node n, String attrib_name) {
@@ -524,6 +534,6 @@ public abstract class AModelManager {
 	 * @return True if the tag exists or false otherwise
 	 */
 	public boolean xmlTagExists(String tagname) {
-		return modelxml.getDocumentElement().getElementsByTagName(tagname).getLength() > 0;
+		return getModelXMLElement(tagname) != null;
 	}
 }

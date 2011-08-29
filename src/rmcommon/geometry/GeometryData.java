@@ -6,10 +6,13 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 import rmcommon.Log;
 import rmcommon.io.AModelManager;
 import rmcommon.io.MathObjectReader;
+import rmcommon.visual.ColorGenerator;
 
 /**
  * 2011-08-24: - Started changes to this class and moved it to JRMCommons
@@ -24,6 +27,12 @@ public class GeometryData extends Object {
 
 	@SuppressWarnings("unused")
 	private int subdomains; // number of subdomains
+
+	/**
+	 * The model discretization type. Influences the way the color values are
+	 * computed (either given on vertex or face)
+	 */
+	public DiscretizationType discrType = DiscretizationType.FEM;
 
 	private int[] domain_of_node; // tell us which subdomain our vertices belong
 									// to
@@ -62,6 +71,10 @@ public class GeometryData extends Object {
 	 */
 	public float[] fnormal; // face normal data
 
+	/**
+	 * The reference nodes. A copy of the original nodes array which might be
+	 * modified for models with changing geometry.
+	 */
 	public float[] reference_node; // the original vertex data
 
 	/**
@@ -78,18 +91,19 @@ public class GeometryData extends Object {
 	public short[] face_wf; // edge data
 
 	/**
-	 * The color data for each [field][face]
+	 * The node color data for each field
 	 */
-	public float[][] ucolor; // color data
+	private List<float[]> fieldColors;
 
 	public float boxsize; // bounding box size
+
 	public int[] frame_num; // number of animation frame for solution field
+
 	public float[][] solution; // field solution data
 
 	public int fields = 1; // number of solution field
 
 	boolean is2D = true; // is our model 2D?
-	public boolean isconstant = false; // is the field solution constant?
 
 	public boolean isgeoani = false;
 	public int vframe_num = 1; // number of animation frame for vertices
@@ -122,91 +136,126 @@ public class GeometryData extends Object {
 		_floatBuffer.position(0);
 	}
 
-	// public GLObject() {
-	// // void constructor
-	// }
-	//
-	// public GLObject(Context _context) {
-	// context = _context;
-	// }
+	/**
+	 * Creates a new geometry data instance
+	 */
+	public GeometryData() {
+		// Use size one per default
+		fieldColors = new ArrayList<float[]>(1);
+	}
 
 	// // get the bounding box data
 	// public float[] get_minmax() {
 	// return nminmax;
 	// }
 
-	// calculate the color data (red green blue alpha) from the solution field
-	public void cal_color_data() {
-		float calphaval = 0.8f; // default alpha value, use 1.0f for nonblend
-								// rendering
+	/**
+	 * Checks if the field with number fieldNr is constant.
+	 * 
+	 * @param fieldNr
+	 * @return True if the field is constant, false otherwise
+	 */
+	public boolean isConstantField(int fieldNr) {
+		return Math.abs(getFieldMin(fieldNr) - getFieldMax(fieldNr)) < 1e-8;
+	}
 
-		ucolor = null;
-		// all field must have the same length (for now)
-		ucolor = new float[fields][solution[0].length * 4];
+	private float getFieldMin(int fieldNr) {
+		float min = solution[fieldNr][0];
+		for (int j = 0; j < solution[fieldNr].length; j++) {
+			min = (min > solution[fieldNr][j]) ? solution[fieldNr][j] : min;
+		}
+		return min;
+	}
 
-		isconstant = true;
-		for (int ifn = 0; ifn < fields; ifn++) {
-			// range of the current solution field
-			float val_min = solution[ifn][0];
-			float val_max = solution[ifn][0];
-			for (int i = 0; i < solution[ifn].length; i++) {
-				val_min = (val_min > solution[ifn][i]) ? solution[ifn][i]
-						: val_min;
-				val_max = (val_max < solution[ifn][i]) ? solution[ifn][i]
-						: val_max;
+	private float getFieldMax(int fieldNr) {
+		float max = solution[fieldNr][0];
+		for (int j = 0; j < solution[fieldNr].length; j++) {
+			max = (max < solution[fieldNr][j]) ? solution[fieldNr][j] : max;
+		}
+		return max;
+	}
+
+	/**
+	 * @param fieldNr
+	 * @return The field colors for the specified field
+	 */
+	public float[] getFieldColors(int fieldNr) {
+		return fieldColors.get(fieldNr);
+	}
+
+	/**
+	 * calculate the color data (red green blue alpha) from the solution field
+	 * TODO: enable different colormaps via model.xml (i.e. matlab's color maps)
+	 * 
+	 * @param cg
+	 *            The color generator
+	 */
+	public void computeColorData(ColorGenerator cg) {
+		for (int fieldNr = 0; fieldNr < fields; fieldNr++) {
+
+			float[] colors = cg.computeColors(solution[fieldNr]);
+			if (discrType == DiscretizationType.FV) {
+				Log.d("GeometryData", "Converting face colors data to node color data");
+				colors = faceColorsToNodeColors(colors);
 			}
-			if (Math.abs(val_max - val_min) > 1e-8) {
-				isconstant = false;
-
-				// calculate color data
-				for (int i = 0; i < solution[0].length; i++) {
-					float tmpvar = (solution[ifn][i] - val_min)
-							/ (val_max - val_min);
-					if (tmpvar <= 0.125f) {
-						ucolor[ifn][i * 4 + 0] = 0.0f;
-						ucolor[ifn][i * 4 + 1] = 0.0f;
-						ucolor[ifn][i * 4 + 2] = 0.5f + tmpvar / 0.25f;
-						ucolor[ifn][i * 4 + 3] = calphaval;
-					}
-					if ((tmpvar > 0.125f) && (tmpvar <= 0.375f)) {
-						ucolor[ifn][i * 4 + 0] = 0.0f;
-						ucolor[ifn][i * 4 + 1] = 0.0f + (tmpvar - 0.125f) / 0.25f;
-						ucolor[ifn][i * 4 + 2] = 1.0f;
-						ucolor[ifn][i * 4 + 3] = calphaval;
-					}
-					if ((tmpvar > 0.375f) && (tmpvar <= 0.625f)) {
-						ucolor[ifn][i * 4 + 0] = 0.0f + (tmpvar - 0.375f) / 0.25f;
-						ucolor[ifn][i * 4 + 1] = 1.0f;
-						ucolor[ifn][i * 4 + 2] = 1.0f - (tmpvar - 0.375f) / 0.25f;
-						ucolor[ifn][i * 4 + 3] = calphaval;
-					}
-					if ((tmpvar > 0.625f) && (tmpvar <= 0.875f)) {
-						ucolor[ifn][i * 4 + 0] = 1.0f;
-						ucolor[ifn][i * 4 + 1] = 1.0f - (tmpvar - 0.625f) / 0.25f;
-						ucolor[ifn][i * 4 + 2] = 0.0f;
-						ucolor[ifn][i * 4 + 3] = calphaval;
-					}
-					if (tmpvar > 0.875f) {
-						ucolor[ifn][i * 4 + 0] = 1.0f - (tmpvar - 0.875f) / 0.25f;
-						ucolor[ifn][i * 4 + 1] = 0.0f;
-						ucolor[ifn][i * 4 + 2] = 0.0f;
-						ucolor[ifn][i * 4 + 3] = calphaval;
-					}
-				}
-			} else {
-				for (int i = 0; i < solution[0].length; i++) {
-					ucolor[ifn][i * 4 + 0] = 0.0f;
-					ucolor[ifn][i * 4 + 1] = 0.0f;
-					ucolor[ifn][i * 4 + 2] = 1.0f;
-					ucolor[ifn][i * 4 + 3] = calphaval;
-				}
-			}
-
+			// Add color data to field colors
+			fieldColors.add(colors);
 		}
 	}
 
-	// calculate normal data for the current model
-	public void cal_normal_data() {
+	/*
+	 * Conversion method for FV discretized field variables
+	 * who give solution values on faces rather than nodes.
+	 * 
+	 * Computes the node color as mean of all adjacent face colors.
+	 */
+	private float[] faceColorsToNodeColors(float[] faceCol) {
+		int numTimeSteps = Math.round(faceCol.length / (4 * faces));
+		float[] nodeCol = new float[numTimeSteps * nodes * 4];
+
+		// Perform summary for each timestep (if more than one)!
+		for (int ts = 0; ts < numTimeSteps; ts++) {
+			int face_off = ts * 4 * faces;
+			int node_off = ts * 4 * nodes;
+			float[] valuesAdded = new float[nodes];
+			for (int f = 0; f < faces / 3; f++) {
+				// Edge 1
+				int n1 = face[3 * f] - 1;
+				nodeCol[node_off + 4 * n1] += faceCol[face_off + 4 * f];
+				nodeCol[node_off + 4 * n1 + 1] += faceCol[face_off + 4 * f + 1];
+				nodeCol[node_off + 4 * n1 + 2] += faceCol[face_off + 4 * f + 2];
+				nodeCol[node_off + 4 * n1 + 3] += faceCol[face_off + 4 * f + 3];
+				valuesAdded[n1]++;
+				// Edge 2
+				int n2 = face[3 * f + 1] - 1;
+				nodeCol[node_off + 4 * n2] += faceCol[face_off + 4 * f];
+				nodeCol[node_off + 4 * n2 + 1] += faceCol[face_off + 4 * f + 1];
+				nodeCol[node_off + 4 * n2 + 2] += faceCol[face_off + 4 * f + 2];
+				nodeCol[node_off + 4 * n2 + 3] += faceCol[face_off + 4 * f + 3];
+				valuesAdded[n2]++;
+				// Edge 3
+				int n3 = face[3 * f + 2] - 1;
+				nodeCol[node_off + 4 * n3] += faceCol[face_off + 4 * f];
+				nodeCol[node_off + 4 * n3 + 1] += faceCol[face_off + 4 * f + 1];
+				nodeCol[node_off + 4 * n3 + 2] += faceCol[face_off + 4 * f + 2];
+				nodeCol[node_off + 4 * n3 + 3] += faceCol[face_off + 4 * f + 3];
+				valuesAdded[n3]++;
+			}
+			// Compute means
+			for (int n = 0; n < nodes; n++) {
+				nodeCol[node_off + 4 * n] /= valuesAdded[n];
+				nodeCol[node_off + 4 * n + 1] /= valuesAdded[n];
+				nodeCol[node_off + 4 * n + 2] /= valuesAdded[n];
+				nodeCol[node_off + 4 * n + 3] /= valuesAdded[n];
+			}
+		}
+		return nodeCol;
+	}
+
+	/**
+	 * calculate normal data for the current model
+	 */
+	private void compute3DNormalData() {
 		normal = new float[nodes * 3];
 		fnormal = new float[faces * 3];
 		float[] vecAB = new float[3];
@@ -234,10 +283,9 @@ public class GeometryData extends Object {
 			fnormal[i * 3 + 1] = vecAB[2] * vecAC[0] - vecAB[0] * vecAC[2];
 			fnormal[i * 3 + 2] = vecAB[0] * vecAC[1] - vecAB[1] * vecAC[0];
 			// normalize
-			length = (float) Math
-					.sqrt((fnormal[i * 3 + 0] * fnormal[i * 3 + 0]
-							+ fnormal[i * 3 + 1] * fnormal[i * 3 + 1] + fnormal[i * 3 + 2]
-							* fnormal[i * 3 + 2]));
+			length = (float) Math.sqrt((fnormal[i * 3 + 0] * fnormal[i * 3 + 0]
+					+ fnormal[i * 3 + 1] * fnormal[i * 3 + 1] + fnormal[i * 3 + 2]
+					* fnormal[i * 3 + 2]));
 			for (j = 0; j < 3; j++)
 				fnormal[i * 3 + j] = fnormal[i * 3 + j] / length;
 			// add in contribution to all three vertices
@@ -259,9 +307,11 @@ public class GeometryData extends Object {
 		}
 	}
 
-	// move the model center to (0,0,0)
-	public void model_centerize() {
-		cal_boxsize();
+	/**
+	 * move the model center to (0,0,0)
+	 */
+	private void centerModelGeometry() {
+		computeBoundingBox();
 		float xcen = 0.5f * (nminmax[0] + nminmax[3]);
 		float ycen = 0.5f * (nminmax[1] + nminmax[4]);
 		float zcen = 0.5f * (nminmax[2] + nminmax[5]);
@@ -279,8 +329,10 @@ public class GeometryData extends Object {
 		nminmax[5] += zcen;
 	}
 
-	// calculate bounding box data
-	public void cal_boxsize() {
+	/**
+	 * calculate bounding box data
+	 */
+	private void computeBoundingBox() {
 		nminmax[0] = 1e9f;
 		nminmax[1] = 1e9f;
 		nminmax[2] = 1e9f;
@@ -296,49 +348,49 @@ public class GeometryData extends Object {
 			}
 		}
 		is2D = false;
-		if (Math.abs(nminmax[5] - nminmax[2]) < 1e-8)
-			is2D = true;
+		if (Math.abs(nminmax[5] - nminmax[2]) < 1e-8) is2D = true;
 
 		boxsize = 0.0f;
-		boxsize = (nminmax[3] - nminmax[0]) > boxsize ? (nminmax[3] - nminmax[0])
-				: boxsize;
-		boxsize = (nminmax[4] - nminmax[1]) > boxsize ? (nminmax[4] - nminmax[1])
-				: boxsize;
-		boxsize = (nminmax[5] - nminmax[2]) > boxsize ? (nminmax[5] - nminmax[2])
-				: boxsize;
+		boxsize = (nminmax[3] - nminmax[0]) > boxsize ? (nminmax[3] - nminmax[0]) : boxsize;
+		boxsize = (nminmax[4] - nminmax[1]) > boxsize ? (nminmax[4] - nminmax[1]) : boxsize;
+		boxsize = (nminmax[5] - nminmax[2]) > boxsize ? (nminmax[5] - nminmax[2]) : boxsize;
 	}
 
 	/**
 	 * Reads the geometry data for the current model using the ModelManager.
 	 * 
-	 * @throws IOException
+	 * @param m
+	 * @return True if loading was successful, false otherwise
 	 */
 	public boolean loadModelGeometry(AModelManager m) {
-		
+
 		try {
 			// rb model or rbappmit-type model with new geometry
-			if ("rb".equals(m.getModelType()) || ("rbappmit".equals(m.getModelType()) && !m.modelFileExists("geometry.dat"))) {
+			if ("rb".equals(m.getModelType())
+					|| ("rbappmit".equals(m.getModelType()) && !m.modelFileExists("geometry.dat"))) {
 				loadGeometry(m);
-			} else if ("rbappmit".equals(m.getModelType())){
+			} else if ("rbappmit".equals(m.getModelType())) {
 				loadrbappmitGeometry(m);
 			} else {
-				Log.e("GeometryData", "Unknown model type '"+m.getModelType()+"' for use with GeometryData");
+				Log.e("GeometryData", "Unknown model type '" + m.getModelType()
+						+ "' for use with GeometryData");
 				return false;
 			}
 		} catch (IOException e) {
-			Log.e("GeometryData", "Loading model geometry failed: "+e.getMessage(), e);
+			Log.e("GeometryData", "Loading model geometry failed: "
+					+ e.getMessage(), e);
 			return false;
 		}
 
 		/*
 		 * Compute the bounding box size
 		 */
-		cal_boxsize();
+		computeBoundingBox();
 
 		/*
 		 * Init color array
 		 */
-		ucolor = new float[fields][nodes * 4];
+		// ucolor = new float[fields][nodes * 4];
 
 		/*
 		 * Create a wireframe list (edge data)
@@ -360,8 +412,7 @@ public class GeometryData extends Object {
 		 * to read for 2D and 3D model data, perhaps even use different
 		 * GeometryData classes?
 		 */
-		if (!is2D())
-			cal_normal_data();
+		if (!is2D()) compute3DNormalData();
 
 		return true;
 	}
@@ -381,7 +432,7 @@ public class GeometryData extends Object {
 		} finally {
 			reader.close();
 		}
-		
+
 		/**
 		 * Read nodes and their locations
 		 */
@@ -426,40 +477,43 @@ public class GeometryData extends Object {
 	}
 
 	/**
-	 * Loads the model geometry from the geometry files.
-	 * So far those comprise a nodes.bin file for the geometry vertices and a
-	 * faces.bin containing the faces and their three edge vertex numbers.
+	 * Loads the model geometry from the geometry files. So far those comprise a
+	 * nodes.bin file for the geometry vertices and a faces.bin containing the
+	 * faces and their three edge vertex numbers.
 	 */
 	private void loadGeometry(AModelManager m) throws IOException {
-		
+
 		MathObjectReader mr = new MathObjectReader();
-		
+
 		node = mr.readRawFloatVector(m.getInStream("vertices.bin"));
 		/*
-		 * Assume the vector to contain 3D data.
-		 * If we have 2D data, we insert zeros at every 3rd position!
+		 * Assume the vector to contain 3D data. If we have 2D data, we insert
+		 * zeros at every 3rd position!
 		 */
 		if ("2".equals(m.getModelXMLTagValue("dimension"))) {
-			float[] tmpnode = new float[node.length + node.length/2];
-			for (int i=0; i<node.length/2; i++) {
-				tmpnode[3*i] = node[2*i];
-				tmpnode[3*i+1] = node[2*i+1];
-				tmpnode[3*i+2] = 0;
+			float[] tmpnode = new float[node.length + node.length / 2];
+			for (int i = 0; i < node.length / 2; i++) {
+				tmpnode[3 * i] = node[2 * i];
+				tmpnode[3 * i + 1] = node[2 * i + 1];
+				tmpnode[3 * i + 2] = 0;
 			}
 			node = tmpnode;
 			tmpnode = null;
 		}
 		// Three coordinates per node
-		nodes = node.length/3;
+		nodes = node.length / 3;
 		reference_node = node.clone();
-		
+
 		face = mr.readRawShortVector(m.getInStream("faces.bin"));
 		// Three edges per face
-		faces = face.length/3;
-		
+		faces = face.length / 3;
+
 		solution = new float[fields][nodes];
 		domain_of_node = new int[nodes];
 		domain_of_face = new int[faces];
+
+		// Read discretization type
+		discrType = DiscretizationType.parse(m.getModelXMLTagValue("geometry.discretization", "FEM"));
 	}
 
 	/**
@@ -497,104 +551,167 @@ public class GeometryData extends Object {
 					// + offset
 					+ LTfunc[domain_of_node[i]][11];
 		}
-		cal_boxsize();
-		model_centerize();
+		computeBoundingBox();
+		centerModelGeometry();
 	}
 
-	// assign 1 field solution
-	public void set_field_data(float[] _val) {
+	/**
+	 * assign 1 field solution
+	 * 
+	 * @param _val
+	 */
+	public void set1FieldData(float[] _val) {
 		solution = null;
 		fields = 1;
 		solution = new float[1][_val.length];
 		solution[0] = _val;
 		frame_num = new int[1];
 		frame_num[0] = solution[0].length / nodes;
-		cal_color_data();
 	}
 
-	public void set_field_data(float[] _val1, float[] _val2) {
-		set_field_data(_val1, _val2, true);
-	}
-
-	// assign 2 field solutions
-	public void set_field_data(float[] _val1, float[] _val2, boolean isDeformed) {
-		if (isDeformed) {
-			solution = null;
-			// the solution field is the displacement field
-			// merge displacement field into current vertex data
-			fields = 1;
-			float val_min = _val1[0];
-			float val_max = _val1[0];
-			for (int i = 0; i < _val1.length; i++) {
-				val_min = (val_min > _val1[i]) ? _val1[i] : val_min;
-				val_max = (val_max < _val1[i]) ? _val1[i] : val_max;
+	/**
+	 * assign 2 field solutions
+	 * 
+	 * @param _val1
+	 * @param _val2
+	 */
+	public void set2FieldData(float[] _val1, float[] _val2) {
+		solution = null;
+		fields = 2;
+		if ((_val1.length / nodes == 1) && (_val2.length / nodes == 1)) {
+			solution = new float[2][nodes];
+			for (int i = 0; i < nodes; i++) {
+				solution[0][i] = _val1[i];
+				solution[1][i] = _val2[i];
 			}
-			for (int i = 0; i < _val2.length; i++) {
-				val_min = (val_min > _val2[i]) ? _val2[i] : val_min;
-				val_max = (val_max < _val2[i]) ? _val2[i] : val_max;
-			}
-			float sval = (val_max - val_min) / boxsize * 5;
-			if ((_val1.length / nodes == 1) && (_val2.length / nodes == 1)) {
-				solution = new float[1][nodes];
-				for (int i = 0; i < nodes; i++) {
-					node[i * 3 + 0] = node[i * 3 + 0] + _val1[i] / sval;
-					node[i * 3 + 1] = node[i * 3 + 1] + _val2[i] / sval;
-					node[i * 3 + 2] = node[i * 3 + 2];
-					solution[0][i] = 0.0f;
-				}
-				frame_num = new int[1];
-				frame_num[0] = 1;
-			} else {
-				int _vframe_num = (_val1.length / nodes);
-				solution = new float[1][nodes * _vframe_num];
-				for (int i = 0; i < nodes; i++)
-					for (int j = 0; j < _vframe_num; j++) {
-						vnode[j * nodes * 3 + i * 3 + 0] = vnode[j * nodes * 3
-								+ i * 3 + 0]
-								+ _val1[j * nodes + i] / sval;
-						vnode[j * nodes * 3 + i * 3 + 1] = vnode[j * nodes * 3
-								+ i * 3 + 1]
-								+ _val2[j * nodes + i] / sval;
-						vnode[j * nodes * 3 + i * 3 + 2] = vnode[j * nodes * 3
-								+ i * 3 + 2];
-						solution[0][j * nodes + i] = 0.0f;
-					}
-				frame_num = new int[1];
-				frame_num[0] = _vframe_num;
-			}
-
+			frame_num = new int[2];
+			frame_num[0] = 1;
+			frame_num[1] = 1;
 		} else {
-			solution = null;
-			fields = 2;
-			if ((_val1.length / nodes == 1) && (_val2.length / nodes == 1)) {
-				solution = new float[2][nodes];
-				for (int i = 0; i < nodes; i++) {
-					solution[0][i] = _val1[i];
-					solution[1][i] = _val2[i];
+			int _vframe_num = (_val1.length / nodes);
+			solution = new float[2][nodes * _vframe_num];
+			for (int i = 0; i < nodes; i++)
+				for (int j = 0; j < _vframe_num; j++) {
+					solution[0][j * nodes + i] = _val1[j * nodes + i];
+					solution[1][j * nodes + i] = _val2[j * nodes + i];
 				}
-				frame_num = new int[2];
-				frame_num[0] = 1;
-				frame_num[1] = 1;
-			} else {
-				int _vframe_num = (_val1.length / nodes);
-				solution = new float[2][nodes * _vframe_num];
-				for (int i = 0; i < nodes; i++)
-					for (int j = 0; j < _vframe_num; j++) {
-						solution[0][j * nodes + i] = _val1[j * nodes + i];
-						solution[1][j * nodes + i] = _val2[j * nodes + i];
-					}
-				frame_num = new int[2];
-				frame_num[0] = _vframe_num;
-				frame_num[1] = _vframe_num;
-			}
-
+			frame_num = new int[2];
+			frame_num[0] = _vframe_num;
+			frame_num[1] = _vframe_num;
 		}
-
-		cal_color_data();
 	}
 
-	public void set_field_data(float[] _val1, float[] _val2, float[] _val3) {
-		set_field_data(_val1, _val2, _val3, true);
+	/**
+	 * assign 2 field solutions that contain deformation data
+	 * 
+	 * @param _val1
+	 * @param _val2
+	 */
+	public void set2FieldDeformationData(float[] _val1, float[] _val2) {
+		solution = null;
+		// the solution field is the displacement field
+		// merge displacement field into current vertex data
+		fields = 1;
+		float val_min = _val1[0];
+		float val_max = _val1[0];
+		for (int i = 0; i < _val1.length; i++) {
+			val_min = (val_min > _val1[i]) ? _val1[i] : val_min;
+			val_max = (val_max < _val1[i]) ? _val1[i] : val_max;
+		}
+		for (int i = 0; i < _val2.length; i++) {
+			val_min = (val_min > _val2[i]) ? _val2[i] : val_min;
+			val_max = (val_max < _val2[i]) ? _val2[i] : val_max;
+		}
+		float sval = (val_max - val_min) / boxsize * 5;
+		if ((_val1.length / nodes == 1) && (_val2.length / nodes == 1)) {
+			solution = new float[1][nodes];
+			for (int i = 0; i < nodes; i++) {
+				node[i * 3 + 0] = node[i * 3 + 0] + _val1[i] / sval;
+				node[i * 3 + 1] = node[i * 3 + 1] + _val2[i] / sval;
+				node[i * 3 + 2] = node[i * 3 + 2];
+				solution[0][i] = 0.0f;
+			}
+			frame_num = new int[1];
+			frame_num[0] = 1;
+		} else {
+			int _vframe_num = (_val1.length / nodes);
+			solution = new float[1][nodes * _vframe_num];
+			for (int i = 0; i < nodes; i++)
+				for (int j = 0; j < _vframe_num; j++) {
+					vnode[j * nodes * 3 + i * 3 + 0] = vnode[j * nodes * 3 + i
+							* 3 + 0]
+							+ _val1[j * nodes + i] / sval;
+					vnode[j * nodes * 3 + i * 3 + 1] = vnode[j * nodes * 3 + i
+							* 3 + 1]
+							+ _val2[j * nodes + i] / sval;
+					vnode[j * nodes * 3 + i * 3 + 2] = vnode[j * nodes * 3 + i
+							* 3 + 2];
+					solution[0][j * nodes + i] = 0.0f;
+				}
+			frame_num = new int[1];
+			frame_num[0] = _vframe_num;
+		}
+	}
+
+	/**
+	 * Complex data case. Assigns 3 field solutions. With deformation field
+	 * data.
+	 * 
+	 * @param _val1
+	 * @param _val2
+	 * @param _val3
+	 */
+	public void set3FieldDeformationData(float[] _val1, float[] _val2, float[] _val3) {
+		solution = null;
+		// the solution field is the displacement field
+		// merge displacement field into current vertex data
+		fields = 1;
+		float val_min = _val1[0];
+		float val_max = _val1[0];
+		for (int i = 0; i < _val1.length; i++) {
+			val_min = (val_min > _val1[i]) ? _val1[i] : val_min;
+			val_max = (val_max < _val1[i]) ? _val1[i] : val_max;
+		}
+		for (int i = 0; i < _val2.length; i++) {
+			val_min = (val_min > _val2[i]) ? _val2[i] : val_min;
+			val_max = (val_max < _val2[i]) ? _val2[i] : val_max;
+		}
+		for (int i = 0; i < _val3.length; i++) {
+			val_min = (val_min > _val3[i]) ? _val3[i] : val_min;
+			val_max = (val_max < _val3[i]) ? _val3[i] : val_max;
+		}
+		float sval = (val_max - val_min) / boxsize * 5;
+		if ((_val1.length / nodes == 1) && (_val2.length / nodes == 1)
+				&& (_val3.length / nodes == 1)) {
+			solution = new float[1][nodes];
+			for (int i = 0; i < nodes; i++) {
+				node[i * 3 + 0] = node[i * 3 + 0] + _val1[i] / sval;
+				node[i * 3 + 1] = node[i * 3 + 1] + _val2[i] / sval;
+				node[i * 3 + 2] = node[i * 3 + 2] + _val3[i] / sval;
+				;
+				solution[0][i] = 0.0f;
+				frame_num = new int[1];
+				frame_num[0] = 1;
+			}
+		} else {
+			int _vframe_num = (_val1.length / nodes);
+			solution = new float[1][nodes * _vframe_num];
+			for (int i = 0; i < nodes; i++)
+				for (int j = 0; j < _vframe_num; j++) {
+					vnode[j * nodes * 3 + i * 3 + 0] = vnode[j * nodes * 3 + i
+							* 3 + 0]
+							+ _val1[j * nodes + i] / sval;
+					vnode[j * nodes * 3 + i * 3 + 1] = vnode[j * nodes * 3 + i
+							* 3 + 1]
+							+ _val2[j * nodes + i] / sval;
+					vnode[j * nodes * 3 + i * 3 + 2] = vnode[j * nodes * 3 + i
+							* 3 + 2]
+							+ _val3[j * nodes + i] / sval;
+					solution[0][j * nodes + i] = 0.0f;
+				}
+			frame_num = new int[1];
+			frame_num[0] = _vframe_num;
+		}
 	}
 
 	/**
@@ -603,97 +720,47 @@ public class GeometryData extends Object {
 	 * @param _val1
 	 * @param _val2
 	 * @param _val3
-	 * @param isDeformed
 	 */
-	public void set_field_data(float[] _val1, float[] _val2, float[] _val3,
-			boolean isDeformed) {
-		if (isDeformed) {
-			solution = null;
-			// the solution field is the displacement field
-			// merge displacement field into current vertex data
-			fields = 1;
-			float val_min = _val1[0];
-			float val_max = _val1[0];
-			for (int i = 0; i < _val1.length; i++) {
-				val_min = (val_min > _val1[i]) ? _val1[i] : val_min;
-				val_max = (val_max < _val1[i]) ? _val1[i] : val_max;
+	public void set3FieldData(float[] _val1, float[] _val2, float[] _val3) {
+		solution = null;
+		fields = 3;
+		if ((_val1.length / nodes == 1) && (_val2.length / nodes == 1)
+				&& (_val3.length / nodes == 1)) {
+			solution = new float[3][nodes];
+			for (int i = 0; i < nodes; i++) {
+				solution[0][i] = _val1[i];
+				solution[1][i] = _val2[i];
+				solution[2][i] = _val3[i];
 			}
-			for (int i = 0; i < _val2.length; i++) {
-				val_min = (val_min > _val2[i]) ? _val2[i] : val_min;
-				val_max = (val_max < _val2[i]) ? _val2[i] : val_max;
-			}
-			for (int i = 0; i < _val3.length; i++) {
-				val_min = (val_min > _val3[i]) ? _val3[i] : val_min;
-				val_max = (val_max < _val3[i]) ? _val3[i] : val_max;
-			}
-			float sval = (val_max - val_min) / boxsize * 5;
-			if ((_val1.length / nodes == 1) && (_val2.length / nodes == 1)
-					&& (_val3.length / nodes == 1)) {
-				solution = new float[1][nodes];
-				for (int i = 0; i < nodes; i++) {
-					node[i * 3 + 0] = node[i * 3 + 0] + _val1[i] / sval;
-					node[i * 3 + 1] = node[i * 3 + 1] + _val2[i] / sval;
-					node[i * 3 + 2] = node[i * 3 + 2] + _val3[i] / sval;
-					;
-					solution[0][i] = 0.0f;
-					frame_num = new int[1];
-					frame_num[0] = 1;
-				}
-			} else {
-				int _vframe_num = (_val1.length / nodes);
-				solution = new float[1][nodes * _vframe_num];
-				for (int i = 0; i < nodes; i++)
-					for (int j = 0; j < _vframe_num; j++) {
-						vnode[j * nodes * 3 + i * 3 + 0] = vnode[j * nodes * 3
-								+ i * 3 + 0]
-								+ _val1[j * nodes + i] / sval;
-						vnode[j * nodes * 3 + i * 3 + 1] = vnode[j * nodes * 3
-								+ i * 3 + 1]
-								+ _val2[j * nodes + i] / sval;
-						vnode[j * nodes * 3 + i * 3 + 2] = vnode[j * nodes * 3
-								+ i * 3 + 2]
-								+ _val3[j * nodes + i] / sval;
-						solution[0][j * nodes + i] = 0.0f;
-					}
-				frame_num = new int[1];
-				frame_num[0] = _vframe_num;
-			}
+			frame_num = new int[3];
+			frame_num[0] = 1;
+			frame_num[1] = 1;
+			frame_num[2] = 1;
 		} else {
-			solution = null;
-			fields = 3;
-			if ((_val1.length / nodes == 1) && (_val2.length / nodes == 1)
-					&& (_val3.length / nodes == 1)) {
-				solution = new float[3][nodes];
-				for (int i = 0; i < nodes; i++) {
-					solution[0][i] = _val1[i];
-					solution[1][i] = _val2[i];
-					solution[2][i] = _val3[i];
+			int _vframe_num = (_val1.length / nodes);
+			solution = new float[3][nodes * _vframe_num];
+			for (int i = 0; i < nodes; i++)
+				for (int j = 0; j < _vframe_num; j++) {
+					solution[0][j * nodes + i] = _val1[j * nodes + i];
+					solution[1][j * nodes + i] = _val2[j * nodes + i];
+					solution[2][j * nodes + i] = _val3[j * nodes + i];
 				}
-				frame_num = new int[3];
-				frame_num[0] = 1;
-				frame_num[1] = 1;
-				frame_num[2] = 1;
-			} else {
-				int _vframe_num = (_val1.length / nodes);
-				solution = new float[3][nodes * _vframe_num];
-				for (int i = 0; i < nodes; i++)
-					for (int j = 0; j < _vframe_num; j++) {
-						solution[0][j * nodes + i] = _val1[j * nodes + i];
-						solution[1][j * nodes + i] = _val2[j * nodes + i];
-						solution[2][j * nodes + i] = _val3[j * nodes + i];
-					}
-				frame_num = new int[3];
-				frame_num[0] = _vframe_num;
-				frame_num[1] = _vframe_num;
-				frame_num[2] = _vframe_num;
-			}
+			frame_num = new int[3];
+			frame_num[0] = _vframe_num;
+			frame_num[1] = _vframe_num;
+			frame_num[2] = _vframe_num;
 		}
-		cal_color_data();
 	}
 
-	// assign 4 field solutions (4th field is sol col)
-	public void set_field_data(float[] _val1, float[] _val2, float[] _val3,
-			float[] _val4) {
+	/**
+	 * assign 4 field solutions (4th field is sol col)
+	 * 
+	 * @param _val1
+	 * @param _val2
+	 * @param _val3
+	 * @param _val4
+	 */
+	public void set4FieldData(float[] _val1, float[] _val2, float[] _val3, float[] _val4) {
 		solution = null;
 
 		// the solution field is the displacement field
@@ -744,7 +811,6 @@ public class GeometryData extends Object {
 			frame_num = new int[1];
 			frame_num[0] = _vframe_num;
 		}
-		cal_color_data();
 	}
 
 	// // assign vertex data
@@ -834,7 +900,9 @@ public class GeometryData extends Object {
 	// return reg_num;
 	// }
 
-	// is our model flat (2D)?
+	/**
+	 * @return If the data is 2D data
+	 */
 	public boolean is2D() {
 		return is2D;
 	}
@@ -866,8 +934,13 @@ public class GeometryData extends Object {
 	// }
 	// }
 
-	// get LTfunc data
-	// this also get us vertex animation data
+	/**
+	 * get LTfunc data
+	 * 
+	 * this also get us vertex animation data
+	 * 
+	 * @param _LTfunc
+	 */
 	public void set_LTfunc(float[][][] _LTfunc) {
 		vframe_num = _LTfunc.length;
 		if (vframe_num == 1)
