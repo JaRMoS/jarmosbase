@@ -397,7 +397,12 @@ public abstract class AModelManager {
 			NodeList nl = params.getElementsByTagName("param");
 			for (int i = 0; i < nl.getLength(); i++) {
 				Node n = nl.item(i);
-				p.addParam(getNodeAttributeValue(n, "name"), Double.parseDouble(getNodeAttributeValue(n, "min")), Double.parseDouble(getNodeAttributeValue(n, "max")));
+				String name = getNodeAttributeValue(n, "name");
+				// Set \mu_i if no name is given.
+				if (name == null) {
+					name = "\u00B5_"+i;
+				}
+				p.addParam(name, Double.parseDouble(getNodeAttributeValue(n, "min")), Double.parseDouble(getNodeAttributeValue(n, "max")));
 			}
 			return p;
 		}

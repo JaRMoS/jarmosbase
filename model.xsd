@@ -107,7 +107,6 @@
 			<xs:attribute name="Qf" use="required" type="xs:integer" />
 			<xs:attribute name="Nmax" use="required" type="xs:integer" />
 			<xs:attribute name="fields" use="required" type="xs:integer" />
-			<xs:attribute name="outputs" use="required" type="xs:integer" />
 		</xs:complexType>
 	</xs:element>
 	<xs:element name="timeinfo">
