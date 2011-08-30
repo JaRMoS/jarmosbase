@@ -212,29 +212,36 @@ public class GeometryData extends Object {
 	private float[] faceColorsToNodeColors(float[] faceCol) {
 		int numTimeSteps = Math.round(faceCol.length / (4 * faces));
 		float[] nodeCol = new float[numTimeSteps * nodes * 4];
-
+		
+//		float T = numTimeSteps * nodes;
+//		for (int ts = 0; ts < T; ts++) {
+//			nodeCol[4*ts] = ts/T;
+//			nodeCol[4*ts+1] = 0;
+//			nodeCol[4*ts+2] = 0;
+//			nodeCol[4*ts+3] = 0.8f;
+//		}
 		// Perform summary for each timestep (if more than one)!
 		for (int ts = 0; ts < numTimeSteps; ts++) {
 			int face_off = ts * 4 * faces;
 			int node_off = ts * 4 * nodes;
 			float[] valuesAdded = new float[nodes];
-			for (int f = 0; f < faces / 3; f++) {
+			for (int f = 0; f < faces; f++) {
 				// Edge 1
-				int n1 = face[3 * f] - 1;
+				int n1 = face[3 * f];
 				nodeCol[node_off + 4 * n1] += faceCol[face_off + 4 * f];
 				nodeCol[node_off + 4 * n1 + 1] += faceCol[face_off + 4 * f + 1];
 				nodeCol[node_off + 4 * n1 + 2] += faceCol[face_off + 4 * f + 2];
 				nodeCol[node_off + 4 * n1 + 3] += faceCol[face_off + 4 * f + 3];
 				valuesAdded[n1]++;
 				// Edge 2
-				int n2 = face[3 * f + 1] - 1;
+				int n2 = face[3 * f + 1];
 				nodeCol[node_off + 4 * n2] += faceCol[face_off + 4 * f];
 				nodeCol[node_off + 4 * n2 + 1] += faceCol[face_off + 4 * f + 1];
 				nodeCol[node_off + 4 * n2 + 2] += faceCol[face_off + 4 * f + 2];
 				nodeCol[node_off + 4 * n2 + 3] += faceCol[face_off + 4 * f + 3];
 				valuesAdded[n2]++;
 				// Edge 3
-				int n3 = face[3 * f + 2] - 1;
+				int n3 = face[3 * f + 2];
 				nodeCol[node_off + 4 * n3] += faceCol[face_off + 4 * f];
 				nodeCol[node_off + 4 * n3 + 1] += faceCol[face_off + 4 * f + 1];
 				nodeCol[node_off + 4 * n3 + 2] += faceCol[face_off + 4 * f + 2];
@@ -505,6 +512,10 @@ public class GeometryData extends Object {
 		reference_node = node.clone();
 
 		face = mr.readRawShortVector(m.getInStream("faces.bin"));
+		// Subtract the indices, as the nodes are addressed with zero offset inside java arrays
+		for (int i=0;i<face.length;i++) {
+			face[i] -= 1;
+		}
 		// Three edges per face
 		faces = face.length / 3;
 
