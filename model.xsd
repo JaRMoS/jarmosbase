@@ -49,6 +49,7 @@
 			<xs:attribute name="max" use="required" type="xs:double" />
 			<xs:attribute name="min" use="required" type="xs:double" />
 			<xs:attribute name="name" use="required" type="xs:string" />
+			<xs:attribute name="default" use="optional" type="xs:double" />
 		</xs:complexType>
 	</xs:element>
 

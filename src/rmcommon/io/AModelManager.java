@@ -405,6 +405,7 @@ public abstract class AModelManager {
 		if (params != null) {
 			Parameters p = new Parameters();
 			NodeList nl = params.getElementsByTagName("param");
+			double[] cur = new double[nl.getLength()];
 			for (int i = 0; i < nl.getLength(); i++) {
 				Node n = nl.item(i);
 				String name = getNodeAttributeValue(n, "name");
@@ -412,8 +413,13 @@ public abstract class AModelManager {
 				if (name == null) {
 					name = "\u00B5_"+i;
 				}
+				// Add
 				p.addParam(name, Double.parseDouble(getNodeAttributeValue(n, "min")), Double.parseDouble(getNodeAttributeValue(n, "max")));
+				// Extract default values and set as current, take min value if no default is set
+				String def = getNodeAttributeValue(n, "default");
+				cur[i] =  def != null ? Double.parseDouble(def) : p.getMinValue(i);
 			}
+			p.setCurrent(cur);
 			return p;
 		}
 		return null;

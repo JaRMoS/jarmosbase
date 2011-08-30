@@ -90,7 +90,7 @@ public class Parameters {
 	 * @return
 	 */
 	public double getMinValue(int i) {
-		return params.get(i).max;
+		return params.get(i).min;
 	}
 	
 	/**
