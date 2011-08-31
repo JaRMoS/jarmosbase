@@ -94,7 +94,7 @@ public class WebModelManager extends AModelManager {
 	@Override
 	public boolean modelFileExists(String filename) {
 		try {
-			getInStream(filename).close();
+			getInStreamImpl(filename).close();
 			return true;
 		} catch (IOException e) {
 			return false;

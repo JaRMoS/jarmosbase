@@ -78,9 +78,8 @@ public class FileModelManager extends AModelManager {
 	 */
 	@Override
 	public boolean modelFileExists(String filename) {
-		String file = root + File.separator + getModelDir() + File.separator
-				+ filename;
-		return new File(file).exists();
+		return new File(root + File.separator + getModelDir() + File.separator
+				+ filename).exists();
 	}
 
 	protected String getFullModelPath() {
