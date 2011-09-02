@@ -6,6 +6,7 @@ package rmcommon.io;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -31,22 +32,22 @@ public class WebModelManager extends AModelManager {
 	 */
 	public static final String DIRLIST_FILE = "models.txt";
 
-	private String rooturl;
+	private URL rooturl;
 
 	/**
 	 * @param rooturl
 	 */
-	public WebModelManager(String rooturl) {
+	public WebModelManager(URL rooturl) {
 		super();
 		this.rooturl = rooturl;
 	}
 	
-	/**
-	 * @return The root web url
-	 */
-	public String getRootURL() {
-		return rooturl;
-	}
+//	/**
+//	 * @return The root web url
+//	 */
+//	public String getRootURL() {
+//		return rooturl;
+//	}
 	
 	/**
 	 * @see rmcommon.io.AModelManager#getClassLoader()
@@ -99,6 +100,11 @@ public class WebModelManager extends AModelManager {
 		} catch (IOException e) {
 			return false;
 		}
+	}
+
+	@Override
+	public URI getModelURI() {
+		return URI.create(rooturl.toString());
 	}
 
 }

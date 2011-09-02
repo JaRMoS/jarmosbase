@@ -16,6 +16,8 @@
 				</xs:choice>
 				<xs:element ref="geometry" minOccurs="0" maxOccurs="1"></xs:element>
 				<xs:element ref="visual" minOccurs="0" maxOccurs="1"></xs:element>
+				<xs:element ref="affinefunctions" minOccurs="0"
+					maxOccurs="1"></xs:element>
 			</xs:sequence>
 			<xs:attribute name="machformat" use="required" type="machformat" />
 			<xs:attribute name="type" use="required" type="modeltype" />
@@ -24,9 +26,10 @@
 	<xs:element name="description">
 		<xs:complexType>
 			<xs:sequence>
-				<xs:element name="name" type="xs:string" minOccurs="0"
+				<xs:element name="name" type="xs:string" />
+				<xs:element name="created" type="xs:date" />
+				<xs:element name="short" type="xs:string" minOccurs="0"
 					maxOccurs="1" />
-				<xs:element name="short" type="xs:string" />
 				<xs:element name="image" type="xs:string" minOccurs="0"
 					maxOccurs="1" />
 				<xs:element name="infohtml" type="xs:string" minOccurs="0"
@@ -58,15 +61,25 @@
 			<xs:sequence>
 				<xs:element name="dimension" type="xs:integer" />
 				<xs:element name="nodes" type="xs:integer" />
-				<xs:element name="discretization" type="discr_types"/>
+				<xs:element name="discretization" type="discr_types" />
 			</xs:sequence>
 		</xs:complexType>
 	</xs:element>
-	
+
 	<xs:element name="visual">
 		<xs:complexType>
 			<xs:sequence>
-				<xs:element name="plotSteps" type="xs:integer" minOccurs="0" maxOccurs="1" />
+				<xs:element name="plotSteps" type="xs:integer" minOccurs="0"
+					maxOccurs="1" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="affinefunctions">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="package" type="xs:string" minOccurs="0"
+					maxOccurs="1" />
 			</xs:sequence>
 		</xs:complexType>
 	</xs:element>

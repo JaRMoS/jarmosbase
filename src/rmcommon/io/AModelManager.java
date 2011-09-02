@@ -4,7 +4,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URI;
+import java.text.DateFormat;
+import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 import javax.xml.XMLConstants;
@@ -26,6 +31,7 @@ import org.xml.sax.SAXException;
 import rmcommon.IMessageHandler;
 import rmcommon.Log;
 import rmcommon.ModelDescriptor;
+import rmcommon.ModelType;
 import rmcommon.Parameters;
 import rmcommon.io.MathObjectReader.MachineFormats;
 
@@ -102,6 +108,7 @@ public abstract class AModelManager {
 	private List<IMessageHandler> mhandlers;
 	private Node modelnode = null;
 	private Document modelxml = null;
+	private ModelType mtype = ModelType.Unknown;
 
 	private MathObjectReader mor = null;
 
@@ -133,7 +140,8 @@ public abstract class AModelManager {
 			// Create the schema validator (if xsd was found)
 			if (in != null) {
 				try {
-					SchemaFactory sf = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+					SchemaFactory sf = SchemaFactory
+							.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
 					Schema s = sf.newSchema(new StreamSource(in));
 					dv = s.newValidator();
 				} catch (IllegalArgumentException e) {
@@ -145,11 +153,14 @@ public abstract class AModelManager {
 					dv = null;
 				}
 			} else
-				Log.e("AModelManager", "No model.xsd validation resource found!");
+				Log.e("AModelManager",
+						"No model.xsd validation resource found!");
 		} catch (ParserConfigurationException e) {
-			throw new RuntimeException("Error creating a XML document builder", e);
+			throw new RuntimeException("Error creating a XML document builder",
+					e);
 		} catch (SAXException e) {
-			throw new RuntimeException("Error creating a XML schema validator", e);
+			throw new RuntimeException("Error creating a XML schema validator",
+					e);
 		}
 	}
 
@@ -264,6 +275,12 @@ public abstract class AModelManager {
 		for (String modeldir : list) {
 			if (isValidModelDir(modeldir)) {
 				setModelDir(modeldir);
+				// Check for the correct model type
+				ModelType mtype = ModelType.parse(getModelXMLAttribute("type",
+						"model"));
+				if (mtype == ModelType.Unknown)
+					continue;
+
 				InputStream img = null;
 				String imgfile = getModelXMLTagValue("description.image");
 				if (modelFileExists(imgfile)) {
@@ -273,8 +290,21 @@ public abstract class AModelManager {
 						// ignore
 					}
 				} else
-					img = getClassLoader().getResourceAsStream("notfound.png");
-				res.add(new ModelDescriptor(modeldir, getModelXMLTagValue("description.short"), getModelXMLAttribute("type"), img));
+					img = getClass().getClassLoader().getResourceAsStream(
+							"notfound.png");
+				// Get model date
+				Date d = null;
+				try {
+					d = DateFormat.getDateInstance().parse(
+							getModelXMLTagValue("model.description.created"));
+				} catch (ParseException e) {
+					d = Calendar.getInstance().getTime();
+				}
+				ModelDescriptor md = new ModelDescriptor(modeldir,
+						getModelXMLTagValue("description.name"), mtype, img, d);
+				md.shortDescription = getModelXMLTagValue("description.short",
+						"");
+				res.add(md);
 			}
 		}
 		return res;
@@ -294,9 +324,16 @@ public abstract class AModelManager {
 	 * 
 	 * @return The model type as string
 	 */
-	public String getModelType() {
-		return getModelXMLAttribute("type");
+	public ModelType getModelType() {
+		return mtype;
 	}
+
+	/**
+	 * Returns an URI for the current model location/directory
+	 * 
+	 * @return
+	 */
+	public abstract URI getModelURI();
 
 	/**
 	 * Returns the attribute value of any attributes of the "model" tag in the
@@ -356,14 +393,16 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * Works as the overload with default value, but returns null if no matchin element is found.
+	 * Works as the overload with default value, but returns null if no matchin
+	 * element is found.
+	 * 
 	 * @param tagname
 	 * @return The tag value or null.
 	 */
 	public String getModelXMLTagValue(String tagname) {
 		return getModelXMLTagValue(tagname, null);
 	}
-	
+
 	/**
 	 * Returns the text content of a tag inside the model.xml file.
 	 * 
@@ -374,8 +413,10 @@ public abstract class AModelManager {
 	 * 
 	 * @param tagname
 	 *            The tag whos value should be returned.
-	 * @param default_value The default value if no matching element is found
-	 * @return The tag text content or the default value if no matching tag is found.
+	 * @param default_value
+	 *            The default value if no matching element is found
+	 * @return The tag text content or the default value if no matching tag is
+	 *         found.
 	 */
 	public String getModelXMLTagValue(String tagname, String default_value) {
 		Element res = getModelXMLElement(tagname);
@@ -411,13 +452,17 @@ public abstract class AModelManager {
 				String name = getNodeAttributeValue(n, "name");
 				// Set \mu_i if no name is given.
 				if (name == null) {
-					name = "\u00B5_"+i;
+					name = "\u00B5_" + i;
 				}
 				// Add
-				p.addParam(name, Double.parseDouble(getNodeAttributeValue(n, "min")), Double.parseDouble(getNodeAttributeValue(n, "max")));
-				// Extract default values and set as current, take min value if no default is set
+				p.addParam(name,
+						Double.parseDouble(getNodeAttributeValue(n, "min")),
+						Double.parseDouble(getNodeAttributeValue(n, "max")));
+				// Extract default values and set as current, take min value if
+				// no default is set
 				String def = getNodeAttributeValue(n, "default");
-				cur[i] =  def != null ? Double.parseDouble(def) : p.getMinValue(i);
+				cur[i] = def != null ? Double.parseDouble(def) : p
+						.getMinValue(i);
 			}
 			p.setCurrent(cur);
 			return p;
@@ -449,7 +494,8 @@ public abstract class AModelManager {
 		 */
 		String olddir = mdir;
 		mdir = dir;
-		if (!modelFileExists("model.xml")) return false;
+		if (!modelFileExists("model.xml"))
+			return false;
 		try {
 			try {
 				db.parse(getInStream("model.xml"));
@@ -461,11 +507,13 @@ public abstract class AModelManager {
 					dv.validate(new DOMSource(modelxml));
 				}
 			} catch (SAXException se) {
-				Log.e("AModelManager", "Invalid model.xml: " + se.getMessage(), se);
+				Log.e("AModelManager", "Invalid model.xml: " + se.getMessage(),
+						se);
 				return false;
 			}
 		} catch (IOException e) {
-			throw new RuntimeException("I/O error while checking if model directory is valid.", e);
+			throw new RuntimeException(
+					"I/O error while checking if model directory is valid.", e);
 		}
 		// Restore old model dir
 		mdir = olddir;
@@ -514,12 +562,18 @@ public abstract class AModelManager {
 		try {
 			modelxml = db.parse(getInStream("model.xml"));
 		} catch (Exception e) {
-			throw new RuntimeException("Unexpected Exception in AModelManager.setModelDir: "
-					+ e.getMessage(), e);
+			throw new ModelManagerException(
+					"Unexpected Exception in AModelManager.setModelDir: "
+							+ e.getMessage(), e);
 		}
 
 		modelxml.normalize();
 		modelnode = modelxml.getElementsByTagName("model").item(0);
+
+		String type = getModelXMLAttribute("type", "model");
+		mtype = ModelType.parse(getModelXMLAttribute("type", "model"));
+		if (mtype == ModelType.Unknown)
+			throw new ModelManagerException("Unknown model type: " + type);
 
 		// Parse model data machine format
 		mor = new MathObjectReader();

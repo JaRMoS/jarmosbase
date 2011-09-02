@@ -4,13 +4,14 @@
  */
 package rmcommon.test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
 import rmcommon.io.AModelManager;
-import rmcommon.io.FileModelManager;
 import rmcommon.io.AModelManager.ModelManagerException;
+import rmcommon.io.FileModelManager;
 
 /**
  * @author Daniel Wirtz

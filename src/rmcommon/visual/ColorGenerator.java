@@ -4,7 +4,6 @@
  */
 package rmcommon.visual;
 
-import rmcommon.geometry.DiscretizationType;
 
 /**
  * @author Daniel Wirtz

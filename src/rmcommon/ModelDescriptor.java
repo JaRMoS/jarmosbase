@@ -4,6 +4,7 @@
 package rmcommon;
 
 import java.io.InputStream;
+import java.util.Date;
 
 import rmcommon.io.AModelManager;
 
@@ -33,17 +34,28 @@ public class ModelDescriptor {
 	/**
 	 * The model type as string. (JKerMor / rbmappmit etc)
 	 */
-	public String type;
+	public ModelType type;
+	
+	/**
+	 * The model creation date
+	 */
+	public Date created;
+	
+	/**
+	 * A VERY short description of the model.
+	 */
+	public String shortDescription = null;
 	
 	/**
 	 * An input stream pointing to an available model image, if given. Otherwise null.
 	 */
 	public InputStream image;
 
-	public ModelDescriptor(String mdir, String t, String type, InputStream i) {
+	public ModelDescriptor(String mdir, String t, ModelType type, InputStream i, Date created) {
 		modeldir = mdir;
 		title = t;
 		image = i;
 		this.type = type;
+		this.created = created;
 	}
 }

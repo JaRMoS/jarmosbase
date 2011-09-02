@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import rmcommon.Log;
+import rmcommon.ModelType;
 import rmcommon.io.AModelManager;
 import rmcommon.io.MathObjectReader;
 import rmcommon.visual.ColorGenerator;
@@ -376,11 +377,9 @@ public class GeometryData extends Object {
 
 		try {
 			// rb model or rbappmit-type model with new geometry
-			if ("rb".equals(m.getModelType())
-					|| ("rbappmit".equals(m.getModelType()) && !m
-							.modelFileExists("geometry.dat"))) {
+			if (m.getModelType() == ModelType.JRB) {
 				loadGeometry(m);
-			} else if ("rbappmit".equals(m.getModelType())) {
+			} else if (m.getModelType() == ModelType.rbappmit) {
 				loadrbappmitGeometry(m);
 			} else {
 				Log.e("GeometryData", "Unknown model type '" + m.getModelType()
@@ -586,7 +585,7 @@ public class GeometryData extends Object {
 		case FV:
 			return faces;
 		default:
-			return nodes;
+			throw new RuntimeException("Unhandled case for discretization type "+discrType.toString());
 		}
 	}
 
