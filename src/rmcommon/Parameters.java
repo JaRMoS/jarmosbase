@@ -73,6 +73,17 @@ public class Parameters {
 	}
 	
 	/**
+	 * Sets the value of the current parameter at position index
+	 * @param index The parameter index
+	 * @param value The new value
+	 */
+	public void setCurrent(int index, double value) {
+		if (index < 0 || index > values.length-1)
+			throw new IllegalArgumentException("Invalid parameter index: "+index+". Max index is "+(values.length-1));
+		values[index] = value;
+	}
+	
+	/**
 	 * 
 	 * @param i
 	 * @return

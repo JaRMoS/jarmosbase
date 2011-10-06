@@ -273,38 +273,45 @@ public abstract class AModelManager {
 			throw new ModelManagerException("Listing model folders failed.", e);
 		}
 		for (String modeldir : list) {
-			if (isValidModelDir(modeldir)) {
-				setModelDir(modeldir);
-				// Check for the correct model type
-				ModelType mtype = ModelType.parse(getModelXMLAttribute("type",
-						"model"));
-				if (mtype == ModelType.Unknown)
-					continue;
+			try {
+				if (isValidModelDir(modeldir)) {
+					setModelDir(modeldir);
+					// Check for the correct model type
+					ModelType mtype = ModelType.parse(getModelXMLAttribute(
+							"type", "model"));
+					if (mtype == ModelType.Unknown)
+						continue;
 
-				InputStream img = null;
-				String imgfile = getModelXMLTagValue("description.image");
-				if (modelFileExists(imgfile)) {
+					InputStream img = null;
+					String imgfile = getModelXMLTagValue("description.image");
+					if (modelFileExists(imgfile)) {
+						try {
+							img = getInStream(imgfile);
+						} catch (IOException e) {
+							// ignore
+						}
+					} else
+						img = getClass().getClassLoader().getResourceAsStream(
+								"notfound.png");
+					// Get model date
+					Date d = null;
 					try {
-						img = getInStream(imgfile);
-					} catch (IOException e) {
-						// ignore
+						d = DateFormat
+								.getDateInstance()
+								.parse(getModelXMLTagValue("model.description.created"));
+					} catch (ParseException e) {
+						d = Calendar.getInstance().getTime();
 					}
-				} else
-					img = getClass().getClassLoader().getResourceAsStream(
-							"notfound.png");
-				// Get model date
-				Date d = null;
-				try {
-					d = DateFormat.getDateInstance().parse(
-							getModelXMLTagValue("model.description.created"));
-				} catch (ParseException e) {
-					d = Calendar.getInstance().getTime();
+					ModelDescriptor md = new ModelDescriptor(modeldir,
+							getModelXMLTagValue("description.name"), mtype,
+							img, d);
+					md.shortDescription = getModelXMLTagValue(
+							"description.short", "");
+					res.add(md);
 				}
-				ModelDescriptor md = new ModelDescriptor(modeldir,
-						getModelXMLTagValue("description.name"), mtype, img, d);
-				md.shortDescription = getModelXMLTagValue("description.short",
-						"");
-				res.add(md);
+			} catch (Exception e) {
+				int a = 5;
+				//
 			}
 		}
 		return res;
