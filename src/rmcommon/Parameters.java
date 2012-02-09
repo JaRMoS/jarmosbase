@@ -131,7 +131,7 @@ public class Parameters {
 		double[] res = new double[getNumParams()];
 		Random r = new Random(System.currentTimeMillis());
 		for (int i = 0; i < res.length; i++) {
-			res[i] = r.nextDouble() * (params.get(i).max - params.get(i).min);
+			res[i] = params.get(i).min + r.nextDouble() * (params.get(i).max - params.get(i).min);
 		}
 		return res;
 	}

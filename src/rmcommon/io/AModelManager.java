@@ -577,8 +577,8 @@ public abstract class AModelManager {
 		modelxml.normalize();
 		modelnode = modelxml.getElementsByTagName("model").item(0);
 
-		String type = getModelXMLAttribute("type", "model");
-		mtype = ModelType.parse(getModelXMLAttribute("type", "model"));
+		String type = getModelXMLAttribute("type");
+		mtype = ModelType.parse(type);
 		if (mtype == ModelType.Unknown)
 			throw new ModelManagerException("Unknown model type: " + type);
 

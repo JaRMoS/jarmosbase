@@ -62,6 +62,7 @@
 				<xs:element name="dimension" type="xs:integer" />
 				<xs:element name="nodes" type="xs:integer" />
 				<xs:element name="discretization" type="discr_types" />
+				<xs:element name="hasFaces" type="xs:boolean"/>
 			</xs:sequence>
 		</xs:complexType>
 	</xs:element>
@@ -92,28 +93,48 @@
 				<xs:element name="dt" type="xs:double" />
 				<xs:element name="dim" type="xs:integer" />
 				<xs:element ref="parameters" minOccurs="0" maxOccurs="1" />
-				<xs:element ref="corefun" />
-				<xs:element ref="inputconvtype" minOccurs="0" />
-				<xs:element ref="outputconvtype" />
-				<xs:element ref="initialvaluetype" />
+				<xs:element ref="corefun" maxOccurs="1"/>
+				<xs:element ref="inputconv" minOccurs="0" maxOccurs="1"/>
+				<xs:element ref="massmatrix" minOccurs="0" maxOccurs="1"/>
+				<xs:element ref="outputconvtype" maxOccurs="1"/>
+				<xs:element ref="initialvaluetype" maxOccurs="1"/>
+				<xs:element name="jkermorpackage" type="java_packageidentifier" minOccurs="0" maxOccurs="1"/>
+				<xs:element name="solvertype" type="xs:string"/>
 			</xs:sequence>
 		</xs:complexType>
 	</xs:element>
 	<xs:element name="corefun">
 		<xs:complexType>
 			<xs:sequence>
-				<xs:element ref="corefuntype" />
 				<xs:element ref="statekernel" />
 				<xs:element ref="timekernel" />
 				<xs:element ref="paramkernel" />
+				<xs:element ref="coeffclass" />
 			</xs:sequence>
+			<xs:attribute name="type" use="required" type="matlab_classidentifier"/>
 		</xs:complexType>
 	</xs:element>
+	<xs:element name="coeffclass" type="java_classidentifier" />
 	<xs:element name="corefuntype" type="matlab_classidentifier" />
 	<xs:element name="statekernel" type="matlab_classidentifier" />
 	<xs:element name="timekernel" type="matlab_classidentifier" />
 	<xs:element name="paramkernel" type="matlab_classidentifier" />
-	<xs:element name="inputconvtype" type="matlab_classidentifier" />
+	<xs:element name="inputconv">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="coeffclass" />
+			</xs:sequence>
+			<xs:attribute name="type" use="required" type="matlab_classidentifier"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="massmatrix">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="coeffclass" minOccurs="0" maxOccurs="1"/>
+			</xs:sequence>
+			<xs:attribute name="type" use="required" type="matlab_classidentifier"/>
+		</xs:complexType>
+	</xs:element>
 	<xs:element name="outputconvtype" type="matlab_classidentifier" />
 	<xs:element name="initialvaluetype" type="matlab_classidentifier" />
 
@@ -158,6 +179,12 @@
 		a simple type. 'string' satisfies none of these conditions. -->
 	<!-- custom types -->
 	<xs:simpleType name="matlab_classidentifier">
+		<xs:restriction base="xs:string"></xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="java_classidentifier">
+		<xs:restriction base="xs:string"></xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="java_packageidentifier">
 		<xs:restriction base="xs:string"></xs:restriction>
 	</xs:simpleType>
 	<xs:simpleType name="machformat">

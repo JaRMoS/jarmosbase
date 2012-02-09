@@ -36,7 +36,7 @@ public enum ModelType {
 	 */
 	public static ModelType parse(String strtype) {
 		for (ModelType type : ModelType.values()) {
-			if (type.toString().equals(strtype)) return type;
+			if (type.toString().toLowerCase().equals(strtype.toLowerCase())) return type;
 		}
 		return ModelType.Unknown;
 	}
