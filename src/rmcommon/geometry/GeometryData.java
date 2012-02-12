@@ -6,14 +6,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 import rmcommon.Log;
 import rmcommon.ModelType;
 import rmcommon.io.AModelManager;
 import rmcommon.io.MathObjectReader;
-import rmcommon.visual.ColorGenerator;
 
 /**
  * 2011-08-24: - Started changes to this class and moved it to JRMCommons
@@ -83,21 +80,21 @@ public class GeometryData extends Object {
 	 * of the three corner nodes/vertices.
 	 */
 	public short[] face; // face data
-	
+
 	/**
-	 * Edges data. Each face ranges over two short values, giving the indices
-	 * of the two corner nodes/vertices.
+	 * Edges data. Each face ranges over two short values, giving the indices of
+	 * the two corner nodes/vertices.
 	 */
 	public short[] edges; // edge data
-	
+
 	/**
 	 * Contains the number of nodes whose values are given by dirichlet values.
 	 */
 	public short[] dir_nodes = null;
-	
+
 	/**
-	 * The dirichlet values for the dir_nodes.
-	 * The first index is the number of the field the value is dirichlet for.
+	 * The dirichlet values for the dir_nodes. The first index is the number of
+	 * the field the value is dirichlet for.
 	 */
 	public double[][] dir_values = null;
 
@@ -108,18 +105,9 @@ public class GeometryData extends Object {
 	 */
 	public short[] face_wf; // edge data
 
-	/**
-	 * The node color data for each field
-	 */
-	private List<float[]> fieldColors;
-
 	public float boxsize; // bounding box size
 
-	public int[] frame_num; // number of animation frame for solution field
-
-	public float[][] solution; // field solution data
-
-	public int fields = 1; // number of solution field
+	public int numFrames; // number of animation frame for solution field
 
 	boolean is2D = true; // is our model 2D?
 
@@ -152,127 +140,6 @@ public class GeometryData extends Object {
 		fbb.order(ByteOrder.nativeOrder());
 		_floatBuffer = fbb.asFloatBuffer();
 		_floatBuffer.position(0);
-	}
-
-	/**
-	 * Creates a new geometry data instance
-	 */
-	public GeometryData() {
-		// Use size one per default
-		fieldColors = new ArrayList<float[]>(1);
-	}
-
-	/**
-	 * Checks if the field with number fieldNr is constant.
-	 * 
-	 * @param fieldNr
-	 * @return True if the field is constant, false otherwise
-	 */
-	public boolean isConstantField(int fieldNr) {
-		return Math.abs(getFieldMin(fieldNr) - getFieldMax(fieldNr)) < 1e-8;
-	}
-
-	private float getFieldMin(int fieldNr) {
-		float min = solution[fieldNr][0];
-		for (int j = 0; j < solution[fieldNr].length; j++) {
-			min = (min > solution[fieldNr][j]) ? solution[fieldNr][j] : min;
-		}
-		return min;
-	}
-
-	private float getFieldMax(int fieldNr) {
-		float max = solution[fieldNr][0];
-		for (int j = 0; j < solution[fieldNr].length; j++) {
-			max = (max < solution[fieldNr][j]) ? solution[fieldNr][j] : max;
-		}
-		return max;
-	}
-
-	/**
-	 * @param fieldNr
-	 * @return The field colors for the specified field
-	 */
-	public float[] getFieldColors(int fieldNr) {
-		return fieldColors.get(fieldNr);
-	}
-
-	/**
-	 * calculate the color data (red green blue alpha) from the solution field
-	 * TODO: enable different colormaps via model.xml (i.e. matlab's color maps)
-	 * 
-	 * @param cg
-	 *            The color generator
-	 */
-	public void computeColorData(ColorGenerator cg) {
-		// Clear old colors
-		fieldColors.clear();
-		for (int fieldNr = 0; fieldNr < fields; fieldNr++) {
-
-			float[] colors = cg.computeColors(solution[fieldNr]);
-			if (discrType == DiscretizationType.FV) {
-				Log.d("GeometryData",
-						"Converting face colors data to node color data");
-				colors = faceColorsToNodeColors(colors);
-			}
-			// Add color data to field colors
-			fieldColors.add(colors);
-		}
-	}
-
-	/*
-	 * Conversion method for FV discretized field variables who give solution
-	 * values on faces rather than nodes.
-	 * 
-	 * Computes the node color as mean of all adjacent face colors.
-	 */
-	private float[] faceColorsToNodeColors(float[] faceCol) {
-		int numTimeSteps = faceCol.length / (4 * faces);
-		float[] nodeCol = new float[numTimeSteps * nodes * 4];
-
-		// float T = numTimeSteps * nodes;
-		// for (int ts = 0; ts < T; ts++) {
-		// nodeCol[4*ts] = ts/T;
-		// nodeCol[4*ts+1] = 0;
-		// nodeCol[4*ts+2] = 0;
-		// nodeCol[4*ts+3] = 0.8f;
-		// }
-		// Perform summary for each timestep (if more than one)!
-		for (int ts = 0; ts < numTimeSteps; ts++) {
-			int face_off = ts * 4 * faces;
-			int node_off = ts * 4 * nodes;
-			float[] valuesAdded = new float[nodes];
-			for (int f = 0; f < faces; f++) {
-				// Edge 1
-				int n1 = face[3 * f];
-				nodeCol[node_off + 4 * n1] += faceCol[face_off + 4 * f];
-				nodeCol[node_off + 4 * n1 + 1] += faceCol[face_off + 4 * f + 1];
-				nodeCol[node_off + 4 * n1 + 2] += faceCol[face_off + 4 * f + 2];
-				nodeCol[node_off + 4 * n1 + 3] += faceCol[face_off + 4 * f + 3];
-				valuesAdded[n1]++;
-				// Edge 2
-				int n2 = face[3 * f + 1];
-				nodeCol[node_off + 4 * n2] += faceCol[face_off + 4 * f];
-				nodeCol[node_off + 4 * n2 + 1] += faceCol[face_off + 4 * f + 1];
-				nodeCol[node_off + 4 * n2 + 2] += faceCol[face_off + 4 * f + 2];
-				nodeCol[node_off + 4 * n2 + 3] += faceCol[face_off + 4 * f + 3];
-				valuesAdded[n2]++;
-				// Edge 3
-				int n3 = face[3 * f + 2];
-				nodeCol[node_off + 4 * n3] += faceCol[face_off + 4 * f];
-				nodeCol[node_off + 4 * n3 + 1] += faceCol[face_off + 4 * f + 1];
-				nodeCol[node_off + 4 * n3 + 2] += faceCol[face_off + 4 * f + 2];
-				nodeCol[node_off + 4 * n3 + 3] += faceCol[face_off + 4 * f + 3];
-				valuesAdded[n3]++;
-			}
-			// Compute means
-			for (int n = 0; n < nodes; n++) {
-				nodeCol[node_off + 4 * n] /= valuesAdded[n];
-				nodeCol[node_off + 4 * n + 1] /= valuesAdded[n];
-				nodeCol[node_off + 4 * n + 2] /= valuesAdded[n];
-				nodeCol[node_off + 4 * n + 3] /= valuesAdded[n];
-			}
-		}
-		return nodeCol;
 	}
 
 	/**
@@ -468,7 +335,6 @@ public class GeometryData extends Object {
 		int count = 1;
 		reference_node = new float[nodes * 3];
 		node = new float[nodes * 3];
-		solution = new float[fields][nodes];
 		for (int i = 0; i < nodes; i++) {
 			reference_node[i * 3 + 0] = Float.parseFloat(tokens[count]);
 			reference_node[i * 3 + 1] = Float.parseFloat(tokens[count + 1]);
@@ -536,7 +402,8 @@ public class GeometryData extends Object {
 		domain_of_node = new int[nodes];
 
 		face = null;
-		if (m.xmlTagExists("geometry.hasFaces")
+		if (m.modelFileExists("faces.bin") // check included for backwards compatibility.
+				|| m.xmlTagExists("geometry.hasFaces")
 				&& Boolean.parseBoolean(m
 						.getModelXMLTagValue("geometry.hasFaces"))) {
 			face = mr.readRawShortVector(m.getInStream("faces.bin"));
@@ -549,17 +416,15 @@ public class GeometryData extends Object {
 			faces = face.length / 3;
 			domain_of_face = new int[faces];
 		}
-		
+
 		edges = null;
 		if (m.modelFileExists("edges.bin")) {
 			edges = mr.readRawShortVector(m.getInStream("edges.bin"));
 		}
-		
+
 		if (m.modelFileExists("dir_nodes.bin")) {
 			edges = mr.readRawShortVector(m.getInStream("edges.bin"));
 		}
-
-		solution = new float[fields][nodes];
 
 		// Read discretization type
 		discrType = DiscretizationType.parse(m.getModelXMLTagValue(
@@ -612,7 +477,7 @@ public class GeometryData extends Object {
 	 * 
 	 * @return The number of field variables of the full solution.
 	 */
-	private int getNumFieldValues() {
+	public int getNumFieldValues() {
 		switch (discrType) {
 		case FEM:
 			return nodes;
@@ -622,52 +487,6 @@ public class GeometryData extends Object {
 			throw new RuntimeException(
 					"Unhandled case for discretization type "
 							+ discrType.toString());
-		}
-	}
-
-	/**
-	 * assign 1 field solution
-	 * 
-	 * @param _val
-	 */
-	public void set1FieldData(float[] _val) {
-		solution = null;
-		fields = 1;
-		solution = new float[1][_val.length];
-		solution[0] = _val;
-		frame_num = new int[] { solution[0].length / getNumFieldValues() };
-	}
-
-	/**
-	 * assign 2 field solutions
-	 * 
-	 * @param _val1
-	 * @param _val2
-	 */
-	public void set2FieldData(float[] _val1, float[] _val2) {
-		if (discrType != DiscretizationType.FEM) {
-			throw new RuntimeException(
-					"Not yet checked to work with non-FEM discretization models");
-		}
-		solution = null;
-		fields = 2;
-		int fvars = getNumFieldValues();
-		if ((_val1.length / fvars == 1) && (_val2.length / fvars == 1)) {
-			solution = new float[2][fvars];
-			for (int i = 0; i < fvars; i++) {
-				solution[0][i] = _val1[i];
-				solution[1][i] = _val2[i];
-			}
-			frame_num = new int[] { 1, 1 };
-		} else {
-			int _vframe_num = (_val1.length / fvars);
-			solution = new float[2][fvars * _vframe_num];
-			for (int i = 0; i < fvars; i++)
-				for (int j = 0; j < _vframe_num; j++) {
-					solution[0][j * fvars + i] = _val1[j * fvars + i];
-					solution[1][j * fvars + i] = _val2[j * fvars + i];
-				}
-			frame_num = new int[] { _vframe_num, _vframe_num };
 		}
 	}
 
@@ -682,12 +501,10 @@ public class GeometryData extends Object {
 			throw new RuntimeException(
 					"Not yet checked to work with non-FEM discretization models");
 		}
-		solution = null;
 		// the solution field is the displacement field
 		// merge displacement field into current vertex data
-		fields = 1;
 		float val_min = Float.MAX_VALUE;
-		float val_max = Float.MAX_VALUE;
+		float val_max = Float.MIN_VALUE;
 		for (int i = 0; i < xDispl.length; i++) {
 			val_min = (val_min > xDispl[i]) ? xDispl[i] : val_min;
 			val_max = (val_max < xDispl[i]) ? xDispl[i] : val_max;
@@ -696,17 +513,14 @@ public class GeometryData extends Object {
 		}
 		float sval = (val_max - val_min) / boxsize * 5;
 		if ((xDispl.length / nodes == 1) && (yDispl.length / nodes == 1)) {
-			solution = new float[1][nodes];
 			for (int i = 0; i < nodes; i++) {
 				node[i * 3 + 0] = node[i * 3 + 0] + xDispl[i] / sval;
 				node[i * 3 + 1] = node[i * 3 + 1] + yDispl[i] / sval;
 				node[i * 3 + 2] = node[i * 3 + 2];
-				solution[0][i] = 0.0f;
 			}
-			frame_num = new int[] { 1 };
+			numFrames = 1;
 		} else {
 			int _vframe_num = (xDispl.length / nodes);
-			solution = new float[1][nodes * _vframe_num];
 			for (int i = 0; i < nodes; i++)
 				for (int j = 0; j < _vframe_num; j++) {
 					vnode[j * nodes * 3 + i * 3 + 0] = vnode[j * nodes * 3 + i
@@ -717,9 +531,8 @@ public class GeometryData extends Object {
 							+ yDispl[j * nodes + i] / sval;
 					vnode[j * nodes * 3 + i * 3 + 2] = vnode[j * nodes * 3 + i
 							* 3 + 2];
-					solution[0][j * nodes + i] = 0.0f;
 				}
-			frame_num = new int[] { _vframe_num };
+			numFrames = _vframe_num;
 		}
 	}
 
@@ -736,10 +549,8 @@ public class GeometryData extends Object {
 			throw new RuntimeException(
 					"Not yet checked to work with non-FEM discretization models");
 		}
-		solution = null;
 		// the solution field is the displacement field
 		// merge displacement field into current vertex data
-		fields = 1;
 		float val_min = Float.MAX_VALUE;
 		float val_max = Float.MIN_VALUE;
 		for (int i = 0; i < xDispl.length; i++) {
@@ -752,22 +563,19 @@ public class GeometryData extends Object {
 		}
 		float sval = (val_max - val_min) / boxsize * 5;
 		/*
-		 * Single solution, no animation as only one displacement has been computed.
+		 * Single solution, no animation as only one displacement has been
+		 * computed.
 		 */
 		if ((xDispl.length / nodes == 1) && (yDispl.length / nodes == 1)
 				&& (zDispl.length / nodes == 1)) {
-			solution = new float[1][nodes];
 			for (int i = 0; i < nodes; i++) {
 				node[i * 3 + 0] = node[i * 3 + 0] + xDispl[i] / sval;
 				node[i * 3 + 1] = node[i * 3 + 1] + yDispl[i] / sval;
 				node[i * 3 + 2] = node[i * 3 + 2] + zDispl[i] / sval;
-				;
-				solution[0][i] = 0.0f;
-				frame_num = new int[] { 1 };
+				numFrames = 1;
 			}
 		} else {
 			int _vframe_num = (xDispl.length / nodes);
-			solution = new float[1][nodes * _vframe_num];
 			for (int i = 0; i < nodes; i++)
 				for (int j = 0; j < _vframe_num; j++) {
 					vnode[j * nodes * 3 + i * 3 + 0] = vnode[j * nodes * 3 + i
@@ -779,112 +587,71 @@ public class GeometryData extends Object {
 					vnode[j * nodes * 3 + i * 3 + 2] = vnode[j * nodes * 3 + i
 							* 3 + 2]
 							+ zDispl[j * nodes + i] / sval;
-					solution[0][j * nodes + i] = 0.0f;
 				}
-			frame_num = new int[] { _vframe_num };
+			numFrames = _vframe_num;
 		}
 	}
 
-	/**
-	 * Complex data case. Assigns 3 field solutions.
-	 * 
-	 * @param _val1
-	 * @param _val2
-	 * @param _val3
-	 */
-	public void set3FieldData(float[] _val1, float[] _val2, float[] _val3) {
-		if (discrType != DiscretizationType.FEM) {
-			throw new RuntimeException(
-					"Not yet checked to work with non-FEM discretization models");
-		}
-		solution = null;
-		fields = 3;
-		int fvars = getNumFieldValues();
-		if ((_val1.length / fvars == 1) && (_val2.length / fvars == 1)
-				&& (_val3.length / fvars == 1)) {
-			solution = new float[3][fvars];
-			for (int i = 0; i < fvars; i++) {
-				solution[0][i] = _val1[i];
-				solution[1][i] = _val2[i];
-				solution[2][i] = _val3[i];
-			}
-			frame_num = new int[] { 1, 1, 1 };
-		} else {
-			int _vframe_num = (_val1.length / fvars);
-			solution = new float[3][fvars * _vframe_num];
-			for (int i = 0; i < fvars; i++)
-				for (int j = 0; j < _vframe_num; j++) {
-					solution[0][j * fvars + i] = _val1[j * fvars + i];
-					solution[1][j * fvars + i] = _val2[j * fvars + i];
-					solution[2][j * fvars + i] = _val3[j * fvars + i];
-				}
-			frame_num = new int[] { _vframe_num, _vframe_num, _vframe_num };
-		}
-	}
-
-	/**
-	 * assign 4 field solutions (4th field is sol col)
-	 * 
-	 * @param _val1
-	 * @param _val2
-	 * @param _val3
-	 * @param _val4
-	 */
-	public void set4FieldData(float[] _val1, float[] _val2, float[] _val3,
-			float[] _val4) {
-		if (discrType != DiscretizationType.FEM) {
-			throw new RuntimeException(
-					"Not yet checked to work with non-FEM discretization models");
-		}
-		solution = null;
-
-		// the solution field is the displacement field
-		// merge displacement field into current vertex data
-		fields = 1;
-		float val_min = _val1[0];
-		float val_max = _val1[0];
-		for (int i = 0; i < _val1.length; i++) {
-			val_min = (val_min > _val1[i]) ? _val1[i] : val_min;
-			val_max = (val_max < _val1[i]) ? _val1[i] : val_max;
-		}
-		for (int i = 0; i < _val2.length; i++) {
-			val_min = (val_min > _val2[i]) ? _val2[i] : val_min;
-			val_max = (val_max < _val2[i]) ? _val2[i] : val_max;
-		}
-		for (int i = 0; i < _val3.length; i++) {
-			val_min = (val_min > _val3[i]) ? _val3[i] : val_min;
-			val_max = (val_max < _val3[i]) ? _val3[i] : val_max;
-		}
-		float sval = (val_max - val_min) / boxsize * 5.0f;
-		if ((_val1.length / nodes == 1) && (_val2.length / nodes == 1)
-				&& (_val3.length / nodes == 1)) {
-			solution = new float[1][nodes];
-			for (int i = 0; i < nodes; i++) {
-				node[i * 3 + 0] = node[i * 3 + 0] + _val1[i] / sval;
-				node[i * 3 + 1] = node[i * 3 + 1] + _val2[i] / sval;
-				node[i * 3 + 2] = node[i * 3 + 2] + _val3[i] / sval;
-				solution[0][i] = _val4[i];
-				frame_num = new int[] { 1 };
-			}
-		} else {
-			int _vframe_num = (_val1.length / nodes);
-			solution = new float[1][nodes * _vframe_num];
-			for (int i = 0; i < nodes; i++)
-				for (int j = 0; j < _vframe_num; j++) {
-					vnode[j * nodes * 3 + i * 3 + 0] = vnode[j * nodes * 3 + i
-							* 3 + 0]
-							+ _val1[j * nodes + i] / sval;
-					vnode[j * nodes * 3 + i * 3 + 1] = vnode[j * nodes * 3 + i
-							* 3 + 1]
-							+ _val2[j * nodes + i] / sval;
-					vnode[j * nodes * 3 + i * 3 + 2] = vnode[j * nodes * 3 + i
-							* 3 + 2]
-							+ _val3[j * nodes + i] / sval;
-					solution[0][j * nodes + i] = _val4[j * nodes + i];
-				}
-			frame_num = new int[] { _vframe_num };
-		}
-	}
+	// +++++++++++++++++++ Seems to be same code as setXYZDeformation data, but
+	// originally handed a fourth
+	// vector with solution (-> color) data to use (other call resulted in
+	// all-zero-vector, which was added manually to all calls
+	// to setXYZDeformationData now)
+	// /**
+	// * assign 4 field solutions (4th field is sol col)
+	// *
+	// * @param _val1
+	// * @param _val2
+	// * @param _val3
+	// * @param _val4
+	// */
+	// public void set4FieldData(float[] _val1, float[] _val2, float[] _val3) {
+	// if (discrType != DiscretizationType.FEM) {
+	// throw new RuntimeException(
+	// "Not yet checked to work with non-FEM discretization models");
+	// }
+	// // the solution field is the displacement field
+	// // merge displacement field into current vertex data
+	// float val_min = _val1[0];
+	// float val_max = _val1[0];
+	// for (int i = 0; i < _val1.length; i++) {
+	// val_min = (val_min > _val1[i]) ? _val1[i] : val_min;
+	// val_max = (val_max < _val1[i]) ? _val1[i] : val_max;
+	// }
+	// for (int i = 0; i < _val2.length; i++) {
+	// val_min = (val_min > _val2[i]) ? _val2[i] : val_min;
+	// val_max = (val_max < _val2[i]) ? _val2[i] : val_max;
+	// }
+	// for (int i = 0; i < _val3.length; i++) {
+	// val_min = (val_min > _val3[i]) ? _val3[i] : val_min;
+	// val_max = (val_max < _val3[i]) ? _val3[i] : val_max;
+	// }
+	// float sval = (val_max - val_min) / boxsize * 5.0f;
+	// if ((_val1.length / nodes == 1) && (_val2.length / nodes == 1)
+	// && (_val3.length / nodes == 1)) {
+	// for (int i = 0; i < nodes; i++) {
+	// node[i * 3 + 0] = node[i * 3 + 0] + _val1[i] / sval;
+	// node[i * 3 + 1] = node[i * 3 + 1] + _val2[i] / sval;
+	// node[i * 3 + 2] = node[i * 3 + 2] + _val3[i] / sval;
+	// numFrames = 1;
+	// }
+	// } else {
+	// int _vframe_num = (_val1.length / nodes);
+	// for (int i = 0; i < nodes; i++)
+	// for (int j = 0; j < _vframe_num; j++) {
+	// vnode[j * nodes * 3 + i * 3 + 0] = vnode[j * nodes * 3 + i
+	// * 3 + 0]
+	// + _val1[j * nodes + i] / sval;
+	// vnode[j * nodes * 3 + i * 3 + 1] = vnode[j * nodes * 3 + i
+	// * 3 + 1]
+	// + _val2[j * nodes + i] / sval;
+	// vnode[j * nodes * 3 + i * 3 + 2] = vnode[j * nodes * 3 + i
+	// * 3 + 2]
+	// + _val3[j * nodes + i] / sval;
+	// }
+	// numFrames = _vframe_num;
+	// }
+	// }
 
 	/**
 	 * @return If the data is 2D data
