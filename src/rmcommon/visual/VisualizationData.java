@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import rmcommon.Log;
+import rmcommon.SolutionField;
 import rmcommon.geometry.DiscretizationType;
 import rmcommon.geometry.GeometryData;
 
@@ -12,7 +13,9 @@ public class VisualizationData {
 	 * The node color data for each field
 	 */
 	public List<float[]> fieldColors;
-	public float[][] solution = null;
+	
+	private List<SolutionField> fields;
+	
 	public int numFrames;
 	
 	private GeometryData gData;
@@ -28,7 +31,7 @@ public class VisualizationData {
 	}
 	
 	public int getNumVisualizationFields() {
-		return solution.length;
+		return fieldColors.size();
 	}
 	
 	/**
@@ -39,84 +42,93 @@ public class VisualizationData {
 		return fieldColors.get(fieldNr);
 	}
 	
-	/**
-	 * assign 1 field solution
-	 * 
-	 * @param _val
-	 */
-	public void set1FieldData(float[] _val) {
-		solution = new float[][]{_val};
-		//solution[0] = _val;
-		numFrames = solution[0].length / gData.getNumFieldValues();
-	}
-
-	/**
-	 * assign 2 field solutions
-	 * 
-	 * @param _val1
-	 * @param _val2
-	 */
-	public void set2FieldData(float[] _val1, float[] _val2) {
-		if (gData.discrType != DiscretizationType.FEM) {
-			throw new RuntimeException(
-					"Not yet checked to work with non-FEM discretization models");
-		}
-		solution = null;
-		int fvars = gData.getNumFieldValues();
-		if ((_val1.length / fvars == 1) && (_val2.length / fvars == 1)) {
-			solution = new float[2][fvars];
-			for (int i = 0; i < fvars; i++) {
-				solution[0][i] = _val1[i];
-				solution[1][i] = _val2[i];
-			}
-			numFrames = 1;
-		} else {
-			int _vframe_num = (_val1.length / fvars);
-			solution = new float[2][fvars * _vframe_num];
-			for (int i = 0; i < fvars; i++)
-				for (int j = 0; j < _vframe_num; j++) {
-					solution[0][j * fvars + i] = _val1[j * fvars + i];
-					solution[1][j * fvars + i] = _val2[j * fvars + i];
-				}
-			numFrames = _vframe_num;
-		}
+	public void setSolutionFields(List<SolutionField> fields) {
+		this.fields = fields;
+		numFrames = fields.get(0).getSize() / gData.getNumFieldValues();
 	}
 	
-	/**
-	 * Complex data case. Assigns 3 field solutions.
-	 * 
-	 * @param _val1
-	 * @param _val2
-	 * @param _val3
-	 */
-	public void set3FieldData(float[] _val1, float[] _val2, float[] _val3) {
-		if (gData.discrType != DiscretizationType.FEM) {
-			throw new RuntimeException(
-					"Not yet checked to work with non-FEM discretization models");
-		}
-		solution = null;
-		int fvars = gData.getNumFieldValues();
-		if ((_val1.length / fvars == 1) && (_val2.length / fvars == 1)
-				&& (_val3.length / fvars == 1)) {
-			solution = new float[3][fvars];
-			for (int i = 0; i < fvars; i++) {
-				solution[0][i] = _val1[i];
-				solution[1][i] = _val2[i];
-				solution[2][i] = _val3[i];
-			}
-			numFrames = 1;
-		} else {
-			int _vframe_num = (_val1.length / fvars);
-			solution = new float[3][fvars * _vframe_num];
-			for (int i = 0; i < fvars; i++)
-				for (int j = 0; j < _vframe_num; j++) {
-					solution[0][j * fvars + i] = _val1[j * fvars + i];
-					solution[1][j * fvars + i] = _val2[j * fvars + i];
-					solution[2][j * fvars + i] = _val3[j * fvars + i];
-				}
-			numFrames = _vframe_num;
-		}
+	public boolean isConstantField(int fieldnr) {
+		return fields.get(fieldnr).isConstant();
 	}
+	
+//	/**
+//	 * assign 1 field solution
+//	 * 
+//	 * @param _val
+//	 */
+//	public void set1FieldData(float[] _val) {
+//		solution = new float[][]{_val};
+//		//solution[0] = _val;
+//		numFrames = solution[0].length / gData.getNumFieldValues();
+//	}
+
+//	/**
+//	 * assign 2 field solutions
+//	 * 
+//	 * @param _val1
+//	 * @param _val2
+//	 */
+//	public void set2FieldData(float[] _val1, float[] _val2) {
+//		if (gData.discrType != DiscretizationType.FEM) {
+//			throw new RuntimeException(
+//					"Not yet checked to work with non-FEM discretization models");
+//		}
+//		solution = null;
+//		int fvars = gData.getNumFieldValues();
+//		if ((_val1.length / fvars == 1) && (_val2.length / fvars == 1)) {
+//			solution = new float[2][fvars];
+//			for (int i = 0; i < fvars; i++) {
+//				solution[0][i] = _val1[i];
+//				solution[1][i] = _val2[i];
+//			}
+//			numFrames = 1;
+//		} else {
+//			int _vframe_num = (_val1.length / fvars);
+//			solution = new float[2][fvars * _vframe_num];
+//			for (int i = 0; i < fvars; i++)
+//				for (int j = 0; j < _vframe_num; j++) {
+//					solution[0][j * fvars + i] = _val1[j * fvars + i];
+//					solution[1][j * fvars + i] = _val2[j * fvars + i];
+//				}
+//			numFrames = _vframe_num;
+//		}
+//	}
+//	
+//	/**
+//	 * Complex data case. Assigns 3 field solutions.
+//	 * 
+//	 * @param _val1
+//	 * @param _val2
+//	 * @param _val3
+//	 */
+//	public void set3FieldData(float[] _val1, float[] _val2, float[] _val3) {
+//		if (gData.discrType != DiscretizationType.FEM) {
+//			throw new RuntimeException(
+//					"Not yet checked to work with non-FEM discretization models");
+//		}
+//		solution = null;
+//		int fvars = gData.getNumFieldValues();
+//		if ((_val1.length / fvars == 1) && (_val2.length / fvars == 1)
+//				&& (_val3.length / fvars == 1)) {
+//			solution = new float[3][fvars];
+//			for (int i = 0; i < fvars; i++) {
+//				solution[0][i] = _val1[i];
+//				solution[1][i] = _val2[i];
+//				solution[2][i] = _val3[i];
+//			}
+//			numFrames = 1;
+//		} else {
+//			int _vframe_num = (_val1.length / fvars);
+//			solution = new float[3][fvars * _vframe_num];
+//			for (int i = 0; i < fvars; i++)
+//				for (int j = 0; j < _vframe_num; j++) {
+//					solution[0][j * fvars + i] = _val1[j * fvars + i];
+//					solution[1][j * fvars + i] = _val2[j * fvars + i];
+//					solution[2][j * fvars + i] = _val3[j * fvars + i];
+//				}
+//			numFrames = _vframe_num;
+//		}
+//	}
 
 	/**
 	 * calculate the color data (red green blue alpha) from the solution field
@@ -128,17 +140,26 @@ public class VisualizationData {
 	public void computeColorData(ColorGenerator cg) {
 		// Clear old colors
 		fieldColors.clear();
-		for (int fieldNr = 0; fieldNr < solution.length; fieldNr++) {
-
-			float[] colors = cg.computeColors(solution[fieldNr]);
-			if (gData.discrType == DiscretizationType.FV) {
-				Log.d("GeometryData",
-						"Converting face colors data to node color data");
-				colors = faceColorsToNodeColors(colors);
+		for (int fieldNr = 0; fieldNr < fields.size(); fieldNr++) {
+			SolutionField f = fields.get(fieldNr);
+			if (f.isReal()) {
+				fieldColors.add(getColors(cg, f.getRealValues()));
+			} else {
+				fieldColors.add(getColors(cg, f.getComplexValues()[0]));
+				fieldColors.add(getColors(cg, f.getComplexValues()[1]));
+				fieldColors.add(getColors(cg, f.getNorms()));
 			}
-			// Add color data to field colors
-			fieldColors.add(colors);
 		}
+	}
+	
+	private float[] getColors(ColorGenerator cg, float[] fieldvalues) {
+		float[] colors = cg.computeColors(fieldvalues);
+		if (gData.discrType == DiscretizationType.FV) {
+			Log.d("GeometryData",
+					"Converting face colors data to node color data");
+			colors = faceColorsToNodeColors(colors);
+		}
+		return colors;
 	}
 	
 	/*
@@ -195,31 +216,5 @@ public class VisualizationData {
 			}
 		}
 		return nodeCol;
-	}
-	
-	/**
-	 * Checks if the field with number fieldNr is constant.
-	 * 
-	 * @param fieldNr
-	 * @return True if the field is constant, false otherwise
-	 */
-	public boolean isConstantField(int fieldNr) {
-		return Math.abs(getFieldMin(fieldNr) - getFieldMax(fieldNr)) < 1e-8;
-	}
-
-	private float getFieldMin(int fieldNr) {
-		float min = solution[fieldNr][0];
-		for (int j = 0; j < solution[fieldNr].length; j++) {
-			min = (min > solution[fieldNr][j]) ? solution[fieldNr][j] : min;
-		}
-		return min;
-	}
-
-	private float getFieldMax(int fieldNr) {
-		float max = solution[fieldNr][0];
-		for (int j = 0; j < solution[fieldNr].length; j++) {
-			max = (max < solution[fieldNr][j]) ? solution[fieldNr][j] : max;
-		}
-		return max;
 	}
 }

@@ -6,9 +6,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
+import java.util.List;
 
 import rmcommon.Log;
 import rmcommon.ModelType;
+import rmcommon.SolutionField;
 import rmcommon.io.AModelManager;
 import rmcommon.io.MathObjectReader;
 
@@ -496,97 +498,38 @@ public class GeometryData extends Object {
 	 * @param xDispl
 	 * @param yDispl
 	 */
-	public void setXYDeformationData(float[] xDispl, float[] yDispl) {
+	public void setDisplacementData(List<SolutionField> xyz) {
 		if (discrType != DiscretizationType.FEM) {
 			throw new RuntimeException(
 					"Not yet checked to work with non-FEM discretization models");
 		}
 		// the solution field is the displacement field
 		// merge displacement field into current vertex data
-		float val_min = Float.MAX_VALUE;
-		float val_max = Float.MIN_VALUE;
-		for (int i = 0; i < xDispl.length; i++) {
-			val_min = (val_min > xDispl[i]) ? xDispl[i] : val_min;
-			val_max = (val_max < xDispl[i]) ? xDispl[i] : val_max;
-			val_min = (val_min > yDispl[i]) ? yDispl[i] : val_min;
-			val_max = (val_max < yDispl[i]) ? yDispl[i] : val_max;
+		float val_min = Float.MAX_VALUE, val_max = Float.MIN_VALUE;
+		for (int i = 0; i < xyz.size(); i++) {
+			if (val_min > xyz.get(i).getMin()) val_min = xyz.get(i).getMin();
+			if (val_max < xyz.get(i).getMax()) val_max = xyz.get(i).getMax();
 		}
 		float sval = (val_max - val_min) / boxsize * 5;
-		if ((xDispl.length / nodes == 1) && (yDispl.length / nodes == 1)) {
+		if (xyz.get(0).getSize() == nodes) {
 			for (int i = 0; i < nodes; i++) {
-				node[i * 3 + 0] = node[i * 3 + 0] + xDispl[i] / sval;
-				node[i * 3 + 1] = node[i * 3 + 1] + yDispl[i] / sval;
-				node[i * 3 + 2] = node[i * 3 + 2];
+				node[i * 3 + 0] += xyz.get(0).getRealValues()[i] / sval;
+				node[i * 3 + 1] += xyz.get(1).getRealValues()[i] / sval;
+				// Maybe we also have z displacements
+				if (xyz.size() == 3) {
+					node[i * 3 + 2] += xyz.get(2).getRealValues()[i] / sval;
+				}
 			}
 			numFrames = 1;
 		} else {
-			int _vframe_num = (xDispl.length / nodes);
+			int _vframe_num = (xyz.get(0).getSize() / nodes);
 			for (int i = 0; i < nodes; i++)
 				for (int j = 0; j < _vframe_num; j++) {
-					vnode[j * nodes * 3 + i * 3 + 0] = vnode[j * nodes * 3 + i
-							* 3 + 0]
-							+ xDispl[j * nodes + i] / sval;
-					vnode[j * nodes * 3 + i * 3 + 1] = vnode[j * nodes * 3 + i
-							* 3 + 1]
-							+ yDispl[j * nodes + i] / sval;
-					vnode[j * nodes * 3 + i * 3 + 2] = vnode[j * nodes * 3 + i
-							* 3 + 2];
-				}
-			numFrames = _vframe_num;
-		}
-	}
-
-	/**
-	 * Assigns deformation values for x,y and z direction
-	 * 
-	 * @param xDispl
-	 * @param yDispl
-	 * @param zDispl
-	 */
-	public void setXYZDeformationData(float[] xDispl, float[] yDispl,
-			float[] zDispl) {
-		if (discrType != DiscretizationType.FEM) {
-			throw new RuntimeException(
-					"Not yet checked to work with non-FEM discretization models");
-		}
-		// the solution field is the displacement field
-		// merge displacement field into current vertex data
-		float val_min = Float.MAX_VALUE;
-		float val_max = Float.MIN_VALUE;
-		for (int i = 0; i < xDispl.length; i++) {
-			val_min = (val_min > xDispl[i]) ? xDispl[i] : val_min;
-			val_min = (val_min > yDispl[i]) ? yDispl[i] : val_min;
-			val_min = (val_min > zDispl[i]) ? zDispl[i] : val_min;
-			val_max = (val_max < xDispl[i]) ? xDispl[i] : val_max;
-			val_max = (val_max < yDispl[i]) ? yDispl[i] : val_max;
-			val_max = (val_max < zDispl[i]) ? zDispl[i] : val_max;
-		}
-		float sval = (val_max - val_min) / boxsize * 5;
-		/*
-		 * Single solution, no animation as only one displacement has been
-		 * computed.
-		 */
-		if ((xDispl.length / nodes == 1) && (yDispl.length / nodes == 1)
-				&& (zDispl.length / nodes == 1)) {
-			for (int i = 0; i < nodes; i++) {
-				node[i * 3 + 0] = node[i * 3 + 0] + xDispl[i] / sval;
-				node[i * 3 + 1] = node[i * 3 + 1] + yDispl[i] / sval;
-				node[i * 3 + 2] = node[i * 3 + 2] + zDispl[i] / sval;
-				numFrames = 1;
-			}
-		} else {
-			int _vframe_num = (xDispl.length / nodes);
-			for (int i = 0; i < nodes; i++)
-				for (int j = 0; j < _vframe_num; j++) {
-					vnode[j * nodes * 3 + i * 3 + 0] = vnode[j * nodes * 3 + i
-							* 3 + 0]
-							+ xDispl[j * nodes + i] / sval;
-					vnode[j * nodes * 3 + i * 3 + 1] = vnode[j * nodes * 3 + i
-							* 3 + 1]
-							+ yDispl[j * nodes + i] / sval;
-					vnode[j * nodes * 3 + i * 3 + 2] = vnode[j * nodes * 3 + i
-							* 3 + 2]
-							+ zDispl[j * nodes + i] / sval;
+					vnode[j * nodes * 3 + i * 3 + 0] += xyz.get(0).getRealValues()[j * nodes + i] / sval;
+					vnode[j * nodes * 3 + i * 3 + 1] += xyz.get(1).getRealValues()[j * nodes + i] / sval;
+					if (xyz.size() == 3) {
+						vnode[j * nodes * 3 + i * 3 + 2] += xyz.get(1).getRealValues()[j * nodes + i] / sval;
+					}
 				}
 			numFrames = _vframe_num;
 		}
