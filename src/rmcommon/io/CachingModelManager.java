@@ -197,8 +197,8 @@ public class CachingModelManager extends AModelManager {
 	
 
 	@Override
-	public void setModelDir(String dir) throws ModelManagerException {
-		source.setModelDir(dir);
+	public void useModel(String dir) throws ModelManagerException {
+		source.useModel(dir);
 		File destdir = new File(dest.getRoot() + File.separator + dir);
 		if (!destdir.isDirectory()) {
 			if (!destdir.mkdir())
@@ -220,7 +220,7 @@ public class CachingModelManager extends AModelManager {
 				throw new ModelManagerException("Error caching model.xml", e);
 			}
 		}
-		dest.setModelDir(dir);
+		dest.useModel(dir);
 		try {
 			cacheModelFiles();
 		} catch (IOException e) {

@@ -5,7 +5,12 @@ package rmcommon.test;
 
 import static org.junit.Assert.fail;
 
+import java.util.Arrays;
+
 import org.junit.Test;
+
+import rmcommon.Log;
+import rmcommon.visual.ColorGenerator;
 
 /**
  * @author Ernst
@@ -32,5 +37,11 @@ public class UtilsTest {
 	public void testRange() {
 		fail("Not yet implemented");
 	}
-
+	
+	@Test
+	public void testColorGen() {
+		int s = 1000;
+		ColorGenerator cg = new ColorGenerator();
+		Log.d("VisData","Default colors of size "+s+": "+Arrays.toString(cg.getDefaultColor(s)));
+	} 
 }

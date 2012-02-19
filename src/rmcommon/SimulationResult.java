@@ -6,8 +6,6 @@ package rmcommon;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.management.RuntimeErrorException;
-
 /**
  * @author CreaByte
  * 
@@ -15,22 +13,24 @@ import javax.management.RuntimeErrorException;
  */
 public class SimulationResult {
 
-	private List<SolutionField> fields;
-	private List<SolutionField> deformations;
+	private List<LogicSolutionField> fields;
 
 	public SimulationResult() {
-		fields = new ArrayList<SolutionField>();
-		deformations = new ArrayList<SolutionField>();
+		fields = new ArrayList<LogicSolutionField>();
 	}
 
-	public void addField(SolutionField field, boolean isDeformation) {
-		List<SolutionField> hlp = isDeformation ? deformations : fields;
-		for (SolutionField f : hlp) {
-			if (f.getSize() != field.getSize())
-				throw new RuntimeException(
-						"Cannot add solution field to collection as the size does not equal the size of already present fields.");
-		}
-		hlp.add(field);
+	public void addField(LogicSolutionField field) {
+//		// Perform some checks for consistency
+//		for (SolutionField f : fields) {
+//			assert f.getSize() == field.getSize();
+//			assert displacements == null || displacements.getSize() == f.getSize();
+//			if (f.getSize() != field.getSize())
+//				throw new RuntimeException(
+//						"Inconsistency! Cannot add solution field to collection as the size does not equal the size of already present fields.");
+//			if (displacements != null && displacements.getSize() != f.getSize())
+//				throw new RuntimeException("Inconsistency! Cannot add field as displacement data has different length.");
+//		}
+		fields.add(field);
 	}
 
 	/**
@@ -38,36 +38,23 @@ public class SimulationResult {
 	 * 
 	 * @return
 	 */
-	public int getNumVisualFields() {
+	public int getNumValueFields() {
 		return fields.size();
 	}
 
-	public boolean isComplex() {
-		boolean res = false;
-		for (SolutionField s : fields) {
-			res |= !s.isReal();
-		}
-		return res;
-	}
+//	public boolean isComplex() {
+//		boolean res = false;
+//		for (SolutionField s : fields) {
+//			res |= !s.isReal();
+//		}
+//		return res;
+//	}
 
-	public SolutionField getField(int nr) {
+	public LogicSolutionField getField(int nr) {
 		return fields.get(nr);
 	}
 
-	public List<SolutionField> getFields() {
+	public List<LogicSolutionField> getLogicFields() {
 		return fields;
 	}
-
-	public boolean hasDeformationData() {
-		return deformations.size() > 0;
-	}
-
-	/**
-	 * 
-	 * @return A list of SolutionFields for x,y and z deformations.
-	 */
-	public List<SolutionField> getDeformationData() {
-		return deformations;
-	}
-
 }

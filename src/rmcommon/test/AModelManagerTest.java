@@ -43,7 +43,7 @@ public class AModelManagerTest {
 	public void testGetModelXMLTagValue() {
 		AModelManager m = new FileModelManager(".");
 		try {
-			m.setModelDir("test");
+			m.useModel("test");
 		} catch (ModelManagerException e) {
 			fail(e.getMessage());
 			e.printStackTrace();

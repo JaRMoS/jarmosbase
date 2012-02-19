@@ -2,15 +2,9 @@ package rmcommon.geometry;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
-import java.nio.ShortBuffer;
-import java.util.List;
 
 import rmcommon.Log;
 import rmcommon.ModelType;
-import rmcommon.SolutionField;
 import rmcommon.io.AModelManager;
 import rmcommon.io.MathObjectReader;
 
@@ -22,6 +16,9 @@ import rmcommon.io.MathObjectReader;
  * 
  * @author dwirtz @date 2011-08-24
  * 
+ *         TODO check if all tags in model.xml are needed
+ * 
+ *         TODO create subdomains property/management/classes
  */
 public class GeometryData extends Object {
 
@@ -32,9 +29,10 @@ public class GeometryData extends Object {
 	 * The model discretization type. Influences the way the color values are
 	 * computed (either given on vertex or face)
 	 */
-	public DiscretizationType discrType = DiscretizationType.FEM;
+	public FieldMapping fieldMap = FieldMapping.VERTEX;
 
-	private int[] domain_of_node; // tell us which subdomain our vertices belong
+	private int[] vertexLTFuncNr; // tell us which subdomain our vertices
+									// belong
 									// to
 	private int[] domain_of_face; // tell us which subdomain our faces belong to
 
@@ -46,7 +44,7 @@ public class GeometryData extends Object {
 	/**
 	 * number of vertices
 	 */
-	public int nodes;
+	public int numVertices;
 
 	/**
 	 * number of faces
@@ -57,7 +55,7 @@ public class GeometryData extends Object {
 	 * The node coordinate vector of size 3*nodes, each node described by
 	 * (x,y,z) coordinates
 	 */
-	public float[] node = null; // vertex data
+	public float[] vertices = null; // vertex data
 
 	/**
 	 * For 3D geometry this contains the local node normal data (three
@@ -75,7 +73,7 @@ public class GeometryData extends Object {
 	 * The reference nodes. A copy of the original nodes array which might be
 	 * modified for models with changing geometry.
 	 */
-	public float[] reference_node; // the original vertex data
+	public float[] originalVertices; // the original vertex data
 
 	/**
 	 * Faces data. Each face ranges over three short values, giving the indices
@@ -96,9 +94,10 @@ public class GeometryData extends Object {
 
 	/**
 	 * The dirichlet values for the dir_nodes. The first index is the number of
-	 * the field the value is dirichlet for.
+	 * the field the value is dirichlet for, and the second index denotes x,y
+	 * and z offsets from original positions defined in node.
 	 */
-	public double[][] dir_values = null;
+	public float[][] dir_values = null;
 
 	/**
 	 * Faces edge/wireframe data. Each wireframe ranges over six short values,
@@ -109,54 +108,21 @@ public class GeometryData extends Object {
 
 	public float boxsize; // bounding box size
 
-	public int numFrames; // number of animation frame for solution field
-
-	boolean is2D = true; // is our model 2D?
-
-	public boolean isgeoani = false;
-	public int vframe_num = 1; // number of animation frame for vertices
-	public float[][][] vLTfunc = null;
-	public float[] vnode = null; // animation node data
-
-	public ShortBuffer _shortBuffer;
-	public FloatBuffer _floatBuffer;
-
-	/**
-	 * Allocates short and float buffers for the rendering process and sets the
-	 * position to zero.
-	 * 
-	 * Placed here as this is done during model data loading.
-	 */
-	public void allocateBuffer() {
-		int SHORT_MAX = 250000;
-		int FLOAT_MAX = 1000000;
-
-		Log.d("GLRenderer", "Allocate (short):" + SHORT_MAX * 2 + " bytes");
-		ByteBuffer vbb = ByteBuffer.allocateDirect(SHORT_MAX * 2);
-		vbb.order(ByteOrder.nativeOrder());
-		_shortBuffer = vbb.asShortBuffer();
-		_shortBuffer.position(0);
-
-		Log.d("GLRenderer", "Allocate (float):" + FLOAT_MAX * 4 + " bytes");
-		ByteBuffer fbb = ByteBuffer.allocateDirect(FLOAT_MAX * 4);
-		fbb.order(ByteOrder.nativeOrder());
-		_floatBuffer = fbb.asFloatBuffer();
-		_floatBuffer.position(0);
-	}
+	private boolean is2D = true; // is our model 2D?
 
 	/**
 	 * calculate normal data for the current model
 	 */
 	private void compute3DNormalData() {
-		normal = new float[nodes * 3];
+		normal = new float[numVertices * 3];
 		fnormal = new float[faces * 3];
 		float[] vecAB = new float[3];
 		float[] vecAC = new float[3];
 		int i, j, k;
 		float length;
 		// Initialize normal data and contribution flag
-		int[] icount = new int[nodes];
-		for (i = 0; i < nodes; i++) {
+		int[] icount = new int[numVertices];
+		for (i = 0; i < numVertices; i++) {
 			normal[i * 3 + 0] = 0.0f;
 			normal[i * 3 + 1] = 0.0f;
 			normal[i * 3 + 2] = 0.0f;
@@ -165,20 +131,16 @@ public class GeometryData extends Object {
 		// calculate local face normal
 		for (i = 0; i < faces; i++) {
 			for (j = 0; j < 3; j++) {
-				vecAB[j] = node[face[i * 3 + 1] * 3 + j]
-						- node[face[i * 3 + 0] * 3 + j];
-				vecAC[j] = node[face[i * 3 + 2] * 3 + j]
-						- node[face[i * 3 + 0] * 3 + j];
+				vecAB[j] = vertices[face[i * 3 + 1] * 3 + j] - vertices[face[i * 3 + 0] * 3 + j];
+				vecAC[j] = vertices[face[i * 3 + 2] * 3 + j] - vertices[face[i * 3 + 0] * 3 + j];
 			}
 			// normal of the face is the cross product of AB and AC
 			fnormal[i * 3 + 0] = vecAB[1] * vecAC[2] - vecAB[2] * vecAC[1];
 			fnormal[i * 3 + 1] = vecAB[2] * vecAC[0] - vecAB[0] * vecAC[2];
 			fnormal[i * 3 + 2] = vecAB[0] * vecAC[1] - vecAB[1] * vecAC[0];
 			// normalize
-			length = (float) Math
-					.sqrt((fnormal[i * 3 + 0] * fnormal[i * 3 + 0]
-							+ fnormal[i * 3 + 1] * fnormal[i * 3 + 1] + fnormal[i * 3 + 2]
-							* fnormal[i * 3 + 2]));
+			length = (float) Math.sqrt((fnormal[i * 3 + 0] * fnormal[i * 3 + 0] + fnormal[i * 3 + 1]
+					* fnormal[i * 3 + 1] + fnormal[i * 3 + 2] * fnormal[i * 3 + 2]));
 			for (j = 0; j < 3; j++)
 				fnormal[i * 3 + j] = fnormal[i * 3 + j] / length;
 			// add in contribution to all three vertices
@@ -189,12 +151,12 @@ public class GeometryData extends Object {
 			}
 		}
 		// average and normalize all normal vectors
-		for (i = 0; i < nodes; i++) {
+		for (i = 0; i < numVertices; i++) {
 			for (j = 0; j < 3; j++)
 				normal[i * 3 + j] = normal[i * 3 + j] / icount[i];
-			length = (float) Math.sqrt((normal[i * 3 + 0] * normal[i * 3 + 0]
-					+ normal[i * 3 + 1] * normal[i * 3 + 1] + normal[i * 3 + 2]
-					* normal[i * 3 + 2]));
+			length = (float) Math
+					.sqrt((normal[i * 3 + 0] * normal[i * 3 + 0] + normal[i * 3 + 1] * normal[i * 3 + 1] + normal[i * 3 + 2]
+							* normal[i * 3 + 2]));
 			for (j = 0; j < 3; j++)
 				normal[i * 3 + j] = normal[i * 3 + j] / length;
 		}
@@ -208,10 +170,10 @@ public class GeometryData extends Object {
 		float xcen = 0.5f * (nminmax[0] + nminmax[3]);
 		float ycen = 0.5f * (nminmax[1] + nminmax[4]);
 		float zcen = 0.5f * (nminmax[2] + nminmax[5]);
-		for (int i = 0; i < nodes; i++) {
-			node[i * 3 + 0] -= xcen;
-			node[i * 3 + 1] -= ycen;
-			node[i * 3 + 2] -= zcen;
+		for (int i = 0; i < vertices.length / 3; i++) {
+			vertices[i * 3 + 0] -= xcen;
+			vertices[i * 3 + 1] -= ycen;
+			vertices[i * 3 + 2] -= zcen;
 		}
 		// recalculating minmax box
 		nminmax[0] -= xcen;
@@ -232,12 +194,10 @@ public class GeometryData extends Object {
 		nminmax[3] = -1e9f;
 		nminmax[4] = -1e9f;
 		nminmax[5] = -1e9f;
-		for (int i = 0; i < nodes; i++) {
+		for (int i = 0; i < vertices.length / 3; i++) {
 			for (int j = 0; j < 3; j++) {
-				nminmax[0 + j] = (nminmax[0 + j] > node[i * 3 + j]) ? node[i
-						* 3 + j] : nminmax[0 + j];
-				nminmax[3 + j] = (nminmax[3 + j] < node[i * 3 + j]) ? node[i
-						* 3 + j] : nminmax[3 + j];
+				nminmax[0 + j] = (nminmax[0 + j] > vertices[i * 3 + j]) ? vertices[i * 3 + j] : nminmax[0 + j];
+				nminmax[3 + j] = (nminmax[3 + j] < vertices[i * 3 + j]) ? vertices[i * 3 + j] : nminmax[3 + j];
 			}
 		}
 		is2D = false;
@@ -245,12 +205,9 @@ public class GeometryData extends Object {
 			is2D = true;
 
 		boxsize = 0.0f;
-		boxsize = (nminmax[3] - nminmax[0]) > boxsize ? (nminmax[3] - nminmax[0])
-				: boxsize;
-		boxsize = (nminmax[4] - nminmax[1]) > boxsize ? (nminmax[4] - nminmax[1])
-				: boxsize;
-		boxsize = (nminmax[5] - nminmax[2]) > boxsize ? (nminmax[5] - nminmax[2])
-				: boxsize;
+		boxsize = (nminmax[3] - nminmax[0]) > boxsize ? (nminmax[3] - nminmax[0]) : boxsize;
+		boxsize = (nminmax[4] - nminmax[1]) > boxsize ? (nminmax[4] - nminmax[1]) : boxsize;
+		boxsize = (nminmax[5] - nminmax[2]) > boxsize ? (nminmax[5] - nminmax[2]) : boxsize;
 	}
 
 	/**
@@ -268,18 +225,16 @@ public class GeometryData extends Object {
 			} else if (m.getModelType() == ModelType.rbappmit) {
 				loadrbappmitGeometry(m);
 			} else {
-				Log.e("GeometryData", "Unknown model type '" + m.getModelType()
-						+ "' for use with GeometryData");
+				Log.e("GeometryData", "Unknown model type '" + m.getModelType() + "' for use with GeometryData");
 				return false;
 			}
 		} catch (IOException e) {
-			Log.e("GeometryData",
-					"Loading model geometry failed: " + e.getMessage(), e);
+			Log.e("GeometryData", "Loading model geometry failed: " + e.getMessage(), e);
 			return false;
 		}
 
 		/*
-		 * Compute the bounding box size
+		 * Compute the bounding box size of the nodes
 		 */
 		computeBoundingBox();
 
@@ -333,19 +288,17 @@ public class GeometryData extends Object {
 		/**
 		 * Read nodes and their locations
 		 */
-		nodes = Integer.parseInt(tokens[0]);
+		numVertices = Integer.parseInt(tokens[0]);
 		int count = 1;
-		reference_node = new float[nodes * 3];
-		node = new float[nodes * 3];
-		for (int i = 0; i < nodes; i++) {
-			reference_node[i * 3 + 0] = Float.parseFloat(tokens[count]);
-			reference_node[i * 3 + 1] = Float.parseFloat(tokens[count + 1]);
-			reference_node[i * 3 + 2] = Float.parseFloat(tokens[count + 2]);
+		originalVertices = new float[numVertices * 3];
+		vertices = new float[numVertices * 3];
+		for (int i = 0; i < numVertices; i++) {
+			originalVertices[i * 3 + 0] = Float.parseFloat(tokens[count]);
+			originalVertices[i * 3 + 1] = Float.parseFloat(tokens[count + 1]);
+			originalVertices[i * 3 + 2] = Float.parseFloat(tokens[count + 2]);
 			count += 3;
-			node[i * 3 + 0] = reference_node[i * 3 + 0];
-			node[i * 3 + 1] = reference_node[i * 3 + 1];
-			node[i * 3 + 2] = reference_node[i * 3 + 2];
 		}
+		System.arraycopy(originalVertices, 0, vertices, 0, originalVertices.length);
 
 		/**
 		 * Read faces and their connections
@@ -360,9 +313,14 @@ public class GeometryData extends Object {
 			face[i * 3 + 2] = Short.parseShort(tokens[count + 2]);
 			count += 3;
 		}
-		domain_of_node = new int[nodes];
-		for (int i = 0; i < nodes; i++) {
-			domain_of_node[i] = Integer.parseInt(tokens[count]);
+		/**
+		 * Read in the number of the transformation function for each vertex
+		 * (effectively modeling different functions for different geometry
+		 * domains)
+		 */
+		vertexLTFuncNr = new int[numVertices];
+		for (int i = 0; i < numVertices; i++) {
+			vertexLTFuncNr[i] = Integer.parseInt(tokens[count]);
 			count++;
 		}
 		domain_of_face = new int[faces];
@@ -382,32 +340,32 @@ public class GeometryData extends Object {
 	private void loadGeometry(AModelManager m) throws IOException {
 
 		MathObjectReader mr = new MathObjectReader();
-
-		node = mr.readRawFloatVector(m.getInStream("vertices.bin"));
+		vertices = mr.readRawFloatVector(m.getInStream("vertices.bin"));
 		/*
 		 * Assume the vector to contain 3D data. If we have 2D data, we insert
 		 * zeros at every 3rd position!
 		 */
 		if ("2".equals(m.getModelXMLTagValue("geometry.dimension"))) {
-			float[] tmpnode = new float[node.length + node.length / 2];
-			for (int i = 0; i < node.length / 2; i++) {
-				tmpnode[3 * i] = node[2 * i];
-				tmpnode[3 * i + 1] = node[2 * i + 1];
+			float[] tmpnode = new float[vertices.length + vertices.length / 2];
+			for (int i = 0; i < vertices.length / 2; i++) {
+				tmpnode[3 * i] = vertices[2 * i];
+				tmpnode[3 * i + 1] = vertices[2 * i + 1];
 				tmpnode[3 * i + 2] = 0;
 			}
-			node = tmpnode;
+			vertices = tmpnode;
 			tmpnode = null;
 		}
 		// Three coordinates per node
-		nodes = node.length / 3;
-		reference_node = node.clone();
-		domain_of_node = new int[nodes];
+		numVertices = vertices.length / 3;
+		originalVertices = vertices.clone();
+		// Only one transformation function for JRB models if any
+		vertexLTFuncNr = new int[numVertices];
 
 		face = null;
-		if (m.modelFileExists("faces.bin") // check included for backwards compatibility.
+		if (m.modelFileExists("faces.bin") // check included for backwards
+											// compatibility.
 				|| m.xmlTagExists("geometry.hasFaces")
-				&& Boolean.parseBoolean(m
-						.getModelXMLTagValue("geometry.hasFaces"))) {
+				&& Boolean.parseBoolean(m.getModelXMLTagValue("geometry.hasFaces"))) {
 			face = mr.readRawShortVector(m.getInStream("faces.bin"));
 			// Subtract the indices, as the nodes are addressed with zero offset
 			// inside java arrays
@@ -429,172 +387,46 @@ public class GeometryData extends Object {
 		}
 
 		// Read discretization type
-		discrType = DiscretizationType.parse(m.getModelXMLTagValue(
-				"geometry.discretization", "FEM"));
+		fieldMap = FieldMapping.parse(m.getModelXMLTagValue("geometry.fieldmapping"));
 	}
 
 	/**
-	 * Affine-linear transformation of a node to a new position. Uses the
-	 * reference nodes and the LTfunc (linear transform function) to move the
-	 * nodes to the specified location.
+	 * Sets the displacement data for this geometry according to the
+	 * DisplacementField provided.
 	 * 
-	 * The crack in a pillar demo illustrates the use of this.
+	 * @param d
+	 *            The displacement field
 	 * 
-	 * LTfunc is of size [number of subdomain, 12] a row of LTfunc is the
-	 * rowwise flatten of the [3,3] transformation matrix and the [3,1]
-	 * translation vector
-	 * 
-	 * @param LTfunc
+	 * @return The number of vertex sets with different displacements available
 	 */
-	public void afflin_geometry_transform(float[][] LTfunc) {
-		float[] old_node = new float[3];
-		for (int i = 0; i < nodes; i++) {
-			old_node[0] = reference_node[i * 3 + 0];
-			old_node[1] = reference_node[i * 3 + 1];
-			old_node[2] = reference_node[i * 3 + 2];
-			node[i * 3 + 0] = LTfunc[domain_of_node[i]][0] * old_node[0]
-					+ LTfunc[domain_of_node[i]][1] * old_node[1]
-					+ LTfunc[domain_of_node[i]][2] * old_node[2]
-					// + offset
-					+ LTfunc[domain_of_node[i]][9];
-			node[i * 3 + 1] = LTfunc[domain_of_node[i]][3] * old_node[0]
-					+ LTfunc[domain_of_node[i]][4] * old_node[1]
-					+ LTfunc[domain_of_node[i]][5] * old_node[2]
-					// + offset
-					+ LTfunc[domain_of_node[i]][10];
-			node[i * 3 + 2] = LTfunc[domain_of_node[i]][6] * old_node[0]
-					+ LTfunc[domain_of_node[i]][7] * old_node[1]
-					+ LTfunc[domain_of_node[i]][8] * old_node[2]
-					// + offset
-					+ LTfunc[domain_of_node[i]][11];
+	public int addDisplacements(DisplacementField d) {
+		if (fieldMap != FieldMapping.VERTEX) {
+			throw new RuntimeException("Displacements not possible for non-vertex based field mapping");
 		}
-		computeBoundingBox();
-		centerModelGeometry();
-	}
-
-	/**
-	 * Gets the number of field variables, i.e. the size of the full reduced
-	 * basis vectors. Depending on the discretization method, this equals either
-	 * the node number (FEM) or face number (FV)
-	 * 
-	 * @return The number of field variables of the full solution.
-	 */
-	public int getNumFieldValues() {
-		switch (discrType) {
-		case FEM:
-			return nodes;
-		case FV:
-			return faces;
-		default:
-			throw new RuntimeException(
-					"Unhandled case for discretization type "
-							+ discrType.toString());
+		if (vertices.length != d.getSize() * 3) {
+			throw new RuntimeException("Invalid displacement field. numVertices=" + numVertices
+					+ ", vertices field length=" + vertices.length + ", displacement field size=" + d.getSize()
+					+ " (x3=" + d.getSize() * 3 + ")");
 		}
-	}
-
-	/**
-	 * assign 2 field solutions that contain deformation data
-	 * 
-	 * @param xDispl
-	 * @param yDispl
-	 */
-	public void setDisplacementData(List<SolutionField> xyz) {
-		if (discrType != DiscretizationType.FEM) {
-			throw new RuntimeException(
-					"Not yet checked to work with non-FEM discretization models");
-		}
-		// the solution field is the displacement field
-		// merge displacement field into current vertex data
-		float val_min = Float.MAX_VALUE, val_max = Float.MIN_VALUE;
-		for (int i = 0; i < xyz.size(); i++) {
-			if (val_min > xyz.get(i).getMin()) val_min = xyz.get(i).getMin();
-			if (val_max < xyz.get(i).getMax()) val_max = xyz.get(i).getMax();
-		}
-		float sval = (val_max - val_min) / boxsize * 5;
-		if (xyz.get(0).getSize() == nodes) {
-			for (int i = 0; i < nodes; i++) {
-				node[i * 3 + 0] += xyz.get(0).getRealValues()[i] / sval;
-				node[i * 3 + 1] += xyz.get(1).getRealValues()[i] / sval;
-				// Maybe we also have z displacements
-				if (xyz.size() == 3) {
-					node[i * 3 + 2] += xyz.get(2).getRealValues()[i] / sval;
-				}
+		float scaling = (d.getMax() - d.getMin()) / boxsize * 5;
+		Log.d("GeoData", "Adding data from '" + d.descriptor + "', first vertices before: [" + vertices[0] + ","
+				+ vertices[1] + "," + vertices[2] + "," + vertices[3] + "," + vertices[4] + "], scaling: " + scaling);
+		int numFrames = (d.getSize() / numVertices);
+		Log.d("GeoData", "numVertices=" + numVertices + ", vertices field length=" + vertices.length
+				+ ", displacement field size=" + d.getSize() + " (x3=" + d.getSize() * 3 + ")");
+		for (int frame = 0; frame < numFrames; frame++) {
+			for (int nodenr = 0; nodenr < numVertices; nodenr++) {
+				int idx = frame * numFrames + nodenr;
+				vertices[3*idx] += d.getXDisplacements()[idx] / scaling;
+				vertices[3*idx + 1] += d.getYDisplacements()[idx] / scaling;
+				vertices[3*idx + 2] += d.getZDisplacements()[idx] / scaling;
 			}
-			numFrames = 1;
-		} else {
-			int _vframe_num = (xyz.get(0).getSize() / nodes);
-			for (int i = 0; i < nodes; i++)
-				for (int j = 0; j < _vframe_num; j++) {
-					vnode[j * nodes * 3 + i * 3 + 0] += xyz.get(0).getRealValues()[j * nodes + i] / sval;
-					vnode[j * nodes * 3 + i * 3 + 1] += xyz.get(1).getRealValues()[j * nodes + i] / sval;
-					if (xyz.size() == 3) {
-						vnode[j * nodes * 3 + i * 3 + 2] += xyz.get(1).getRealValues()[j * nodes + i] / sval;
-					}
-				}
-			numFrames = _vframe_num;
 		}
+		Log.d("GeoData", "First vertices after: [" + vertices[0] + "," + vertices[1] + "," + vertices[2] + ","
+				+ vertices[3] + "," + vertices[4] + "]");
+		centerModelGeometry();
+		return numFrames;
 	}
-
-	// +++++++++++++++++++ Seems to be same code as setXYZDeformation data, but
-	// originally handed a fourth
-	// vector with solution (-> color) data to use (other call resulted in
-	// all-zero-vector, which was added manually to all calls
-	// to setXYZDeformationData now)
-	// /**
-	// * assign 4 field solutions (4th field is sol col)
-	// *
-	// * @param _val1
-	// * @param _val2
-	// * @param _val3
-	// * @param _val4
-	// */
-	// public void set4FieldData(float[] _val1, float[] _val2, float[] _val3) {
-	// if (discrType != DiscretizationType.FEM) {
-	// throw new RuntimeException(
-	// "Not yet checked to work with non-FEM discretization models");
-	// }
-	// // the solution field is the displacement field
-	// // merge displacement field into current vertex data
-	// float val_min = _val1[0];
-	// float val_max = _val1[0];
-	// for (int i = 0; i < _val1.length; i++) {
-	// val_min = (val_min > _val1[i]) ? _val1[i] : val_min;
-	// val_max = (val_max < _val1[i]) ? _val1[i] : val_max;
-	// }
-	// for (int i = 0; i < _val2.length; i++) {
-	// val_min = (val_min > _val2[i]) ? _val2[i] : val_min;
-	// val_max = (val_max < _val2[i]) ? _val2[i] : val_max;
-	// }
-	// for (int i = 0; i < _val3.length; i++) {
-	// val_min = (val_min > _val3[i]) ? _val3[i] : val_min;
-	// val_max = (val_max < _val3[i]) ? _val3[i] : val_max;
-	// }
-	// float sval = (val_max - val_min) / boxsize * 5.0f;
-	// if ((_val1.length / nodes == 1) && (_val2.length / nodes == 1)
-	// && (_val3.length / nodes == 1)) {
-	// for (int i = 0; i < nodes; i++) {
-	// node[i * 3 + 0] = node[i * 3 + 0] + _val1[i] / sval;
-	// node[i * 3 + 1] = node[i * 3 + 1] + _val2[i] / sval;
-	// node[i * 3 + 2] = node[i * 3 + 2] + _val3[i] / sval;
-	// numFrames = 1;
-	// }
-	// } else {
-	// int _vframe_num = (_val1.length / nodes);
-	// for (int i = 0; i < nodes; i++)
-	// for (int j = 0; j < _vframe_num; j++) {
-	// vnode[j * nodes * 3 + i * 3 + 0] = vnode[j * nodes * 3 + i
-	// * 3 + 0]
-	// + _val1[j * nodes + i] / sval;
-	// vnode[j * nodes * 3 + i * 3 + 1] = vnode[j * nodes * 3 + i
-	// * 3 + 1]
-	// + _val2[j * nodes + i] / sval;
-	// vnode[j * nodes * 3 + i * 3 + 2] = vnode[j * nodes * 3 + i
-	// * 3 + 2]
-	// + _val3[j * nodes + i] / sval;
-	// }
-	// numFrames = _vframe_num;
-	// }
-	// }
 
 	/**
 	 * @return If the data is 2D data
@@ -604,30 +436,51 @@ public class GeometryData extends Object {
 	}
 
 	/**
-	 * get LTfunc data
+	 * Applies Affine Linear Transformation To Vertices
 	 * 
-	 * this also get us vertex animation data
-	 * 
-	 * @param _LTfunc
+	 * @param afflinfuncs
 	 */
-	public void set_LTfunc(float[][][] _LTfunc) {
-		vframe_num = _LTfunc.length;
-		if (vframe_num == 1)
-			isgeoani = false;
-		else
-			isgeoani = true;
-		vLTfunc = _LTfunc;
-		vnode = new float[vframe_num * nodes * 3];
-		for (int i = 0; i < vframe_num; i++) {
-
-			// Transform the nodes to the locations specified by _LTFunc
-			afflin_geometry_transform(vLTfunc[i]);
-
-			// copy current nodal data into animation list
-			for (int j = 0; j < nodes; j++)
-				for (int k = 0; k < 3; k++)
-					vnode[i * nodes * 3 + j * 3 + k] = node[j * 3 + k];
+	public void applyAffLinVertexTransformation(float[][][] afflinfuncs) {
+		Log.d("GeoData", "Applying affine linear transformation to nodes (" + afflinfuncs.length + " sets/frames)");
+		vertices = new float[afflinfuncs.length * numVertices * 3];
+		float baseX, baseY, baseZ;
+		for (int funcNr = 0; funcNr < afflinfuncs.length; funcNr++) {
+			float[][] funcs = afflinfuncs[funcNr];
+			/**
+			 * Affine-linear transformation of a node to a new position. Uses
+			 * the reference nodes and the LTfunc (linear transform function) to
+			 * move the nodes to the specified location.
+			 * 
+			 * The crack in a pillar demo illustrates the use of this.
+			 * 
+			 * func is of size [number of subdomain, 12] a row of LTfunc is the
+			 * rowwise flatten of the [3,3] transformation matrix and the [3,1]
+			 * translation vector
+			 * 
+			 * Copies the current nodal data into vertex list (flattened out)
+			 */
+			for (int vertexNr = 0; vertexNr < numVertices; vertexNr++) {
+				baseX = originalVertices[vertexNr * 3 + 0];
+				baseY = originalVertices[vertexNr * 3 + 1];
+				baseZ = originalVertices[vertexNr * 3 + 2];
+				/*
+				 * Get transformation function for this vertex (possibly due to
+				 * different functions on different subdomains)
+				 */
+				float[] fun = funcs[vertexLTFuncNr[vertexNr]];
+				/*
+				 * Apply affine linear transformation
+				 */
+				vertices[funcNr * numVertices * 3 + vertexNr * 3 + 0] = fun[0] * baseX + fun[1] * baseY + fun[2]
+						* baseZ + fun[9];
+				vertices[funcNr * numVertices * 3 + vertexNr * 3 + 1] = fun[3] * baseX + fun[4] * baseY + fun[5]
+						* baseZ + fun[10];
+				vertices[funcNr * numVertices * 3 + vertexNr * 3 + 2] = fun[6] * baseX + fun[7] * baseY + fun[8]
+						* baseZ + fun[11];
+			}
 		}
+		// Center geometry using ALL possibly used nodes
+		centerModelGeometry();
 	}
 
 }

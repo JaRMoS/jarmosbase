@@ -14,10 +14,12 @@
 					<xs:element name="rbappmit_model" minOccurs="0"
 						maxOccurs="1" type="xs:string" />
 				</xs:choice>
+				<xs:element name="numDoFfields" type="xs:integer" minOccurs="1" maxOccurs="1"/>
 				<xs:element ref="geometry" minOccurs="0" maxOccurs="1"></xs:element>
 				<xs:element ref="visual" minOccurs="0" maxOccurs="1"></xs:element>
-				<xs:element ref="affinefunctions" minOccurs="0"
-					maxOccurs="1"></xs:element>
+				<xs:element name="package" type="java_packageidentifier" minOccurs="0" maxOccurs="1"/>
+<!-- 				<xs:element ref="affinefunctions" minOccurs="0" -->
+<!-- 					maxOccurs="1"></xs:element> -->
 			</xs:sequence>
 			<xs:attribute name="machformat" use="required" type="machformat" />
 			<xs:attribute name="type" use="required" type="modeltype" />
@@ -61,7 +63,7 @@
 			<xs:sequence>
 				<xs:element name="dimension" type="xs:integer" />
 				<xs:element name="nodes" type="xs:integer" />
-				<xs:element name="discretization" type="discr_types" />
+				<xs:element name="fieldmapping" type="fm_types" />
 				<xs:element name="hasFaces" type="xs:boolean"/>
 			</xs:sequence>
 		</xs:complexType>
@@ -72,18 +74,32 @@
 			<xs:sequence>
 				<xs:element name="plotSteps" type="xs:integer" minOccurs="0"
 					maxOccurs="1" />
+				<xs:element name="fields" minOccurs="0" maxOccurs="1">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="field" minOccurs="1" maxOccurs="unbounded"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
 			</xs:sequence>
+<!-- 			<xs:attribute name="fields" use="optional" type="xs:string" /> -->
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="field">
+		<xs:complexType>
+			<xs:attribute name="mapping" default="VERTEX" use="optional"/>
+			<xs:attribute name="type" default="RealValue" use="required"/>
 		</xs:complexType>
 	</xs:element>
 
-	<xs:element name="affinefunctions">
-		<xs:complexType>
-			<xs:sequence>
-				<xs:element name="package" type="xs:string" minOccurs="0"
-					maxOccurs="1" />
-			</xs:sequence>
-		</xs:complexType>
-	</xs:element>
+<!-- 	<xs:element name="affinefunctions"> -->
+<!-- 		<xs:complexType> -->
+<!-- 			<xs:sequence> -->
+<!-- 				<xs:element name="package" type="xs:string" minOccurs="0" -->
+<!-- 					maxOccurs="1" /> -->
+<!-- 			</xs:sequence> -->
+<!-- 		</xs:complexType> -->
+<!-- 	</xs:element> -->
 
 	<!-- KERMOR model part -->
 	<xs:element name="kermor_model">
@@ -98,8 +114,9 @@
 				<xs:element ref="massmatrix" minOccurs="0" maxOccurs="1"/>
 				<xs:element ref="outputconvtype" maxOccurs="1"/>
 				<xs:element ref="initialvaluetype" maxOccurs="1"/>
-				<xs:element name="jkermorpackage" type="java_packageidentifier" minOccurs="0" maxOccurs="1"/>
+<!-- 				<xs:element name="jkermorpackage" type="java_packageidentifier" minOccurs="0" maxOccurs="1"/> -->
 				<xs:element name="solvertype" type="xs:string"/>
+				<xs:element name="outputtosimresult" type="java_classidentifier" minOccurs="0" maxOccurs="1"/>
 			</xs:sequence>
 		</xs:complexType>
 	</xs:element>
@@ -151,7 +168,6 @@
 			<xs:attribute name="Qa" use="required" type="xs:integer" />
 			<xs:attribute name="Qf" use="required" type="xs:integer" />
 			<xs:attribute name="Nmax" use="required" type="xs:integer" />
-			<xs:attribute name="fields" use="required" type="xs:integer" />
 		</xs:complexType>
 	</xs:element>
 	<xs:element name="timeinfo">
@@ -193,10 +209,10 @@
 			<xs:enumeration value="be"></xs:enumeration>
 		</xs:restriction>
 	</xs:simpleType>
-	<xs:simpleType name="discr_types">
+	<xs:simpleType name="fm_types">
 		<xs:restriction base="xs:string">
-			<xs:enumeration value="FEM"></xs:enumeration>
-			<xs:enumeration value="FV"></xs:enumeration>
+			<xs:enumeration value="VERTEX"></xs:enumeration>
+			<xs:enumeration value="ELEMENT"></xs:enumeration>
 		</xs:restriction>
 	</xs:simpleType>
 	<xs:simpleType name="modeltype">

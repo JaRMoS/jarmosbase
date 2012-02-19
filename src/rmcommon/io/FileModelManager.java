@@ -32,7 +32,8 @@ public class FileModelManager extends AModelManager {
 	 */
 	public FileModelManager(String root) {
 		super();
-		if (!new File(root).exists()) {
+		File r = new File(root);
+		if (!r.exists()) {
 			throw new IllegalArgumentException("Directory does not exist: '"
 					+ root + "'");
 		}

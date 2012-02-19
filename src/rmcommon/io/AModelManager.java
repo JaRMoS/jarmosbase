@@ -28,11 +28,14 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import rmcommon.FieldDescriptor;
 import rmcommon.IMessageHandler;
 import rmcommon.Log;
 import rmcommon.ModelDescriptor;
 import rmcommon.ModelType;
 import rmcommon.Parameters;
+import rmcommon.SolutionFieldType;
+import rmcommon.geometry.FieldMapping;
 import rmcommon.io.MathObjectReader.MachineFormats;
 
 /***
@@ -56,6 +59,7 @@ import rmcommon.io.MathObjectReader.MachineFormats;
  * Despite the model.xml file needed in every model folder,
  * 
  * @author dwirtz
+ * 
  * 
  */
 public abstract class AModelManager {
@@ -140,8 +144,7 @@ public abstract class AModelManager {
 			// Create the schema validator (if xsd was found)
 			if (in != null) {
 				try {
-					SchemaFactory sf = SchemaFactory
-							.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+					SchemaFactory sf = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
 					Schema s = sf.newSchema(new StreamSource(in));
 					dv = s.newValidator();
 				} catch (IllegalArgumentException e) {
@@ -153,14 +156,11 @@ public abstract class AModelManager {
 					dv = null;
 				}
 			} else
-				Log.e("AModelManager",
-						"No model.xsd validation resource found!");
+				Log.e("AModelManager", "No model.xsd validation resource found!");
 		} catch (ParserConfigurationException e) {
-			throw new RuntimeException("Error creating a XML document builder",
-					e);
+			throw new RuntimeException("Error creating a XML document builder", e);
 		} catch (SAXException e) {
-			throw new RuntimeException("Error creating a XML schema validator",
-					e);
+			throw new RuntimeException("Error creating a XML schema validator", e);
 		}
 	}
 
@@ -169,6 +169,28 @@ public abstract class AModelManager {
 	 */
 	public void addMessageHandler(IMessageHandler h) {
 		mhandlers.add(h);
+	}
+
+	/**
+	 * Loads a class available in the precompiled classes associated with the
+	 * current model. The model.xml-tag "package" is used if set to specify the
+	 * package under which the class can be found; if not set the default
+	 * package (="") is used.
+	 * 
+	 * @param name
+	 * @return
+	 * @throws ModelManagerException
+	 */
+	public Object loadModelClass(String name) throws ModelManagerException {
+		ClassLoader cl = getClassLoader();
+		String pkg = getModelPackageStr();
+		try {
+			Class<?> af = cl.loadClass(pkg + name);
+			return af.newInstance();
+		} catch (Exception e) {
+			throw new ModelManagerException("Error loading the model class '" + name + "' of package '"
+					+ (pkg != "" ? pkg : "(default)") + "'.", e);
+		}
 	}
 
 	/**
@@ -242,8 +264,7 @@ public abstract class AModelManager {
 	 * @return An InputStream pointing to the resource
 	 * @throws IOException
 	 */
-	protected abstract InputStream getInStreamImpl(String filename)
-			throws IOException;
+	protected abstract InputStream getInStreamImpl(String filename) throws IOException;
 
 	/**
 	 * Use this method in order to get a MathObjectReader instance fitted for
@@ -263,8 +284,7 @@ public abstract class AModelManager {
 	 * @return A list of ModelDescriptors
 	 * @throws ModelManagerException
 	 */
-	public List<ModelDescriptor> getModelDescriptors()
-			throws ModelManagerException {
+	public List<ModelDescriptor> getModelDescriptors() throws ModelManagerException {
 		ArrayList<ModelDescriptor> res = new ArrayList<ModelDescriptor>();
 		String[] list = null;
 		try {
@@ -273,45 +293,34 @@ public abstract class AModelManager {
 			throw new ModelManagerException("Listing model folders failed.", e);
 		}
 		for (String modeldir : list) {
-			try {
-				if (isValidModelDir(modeldir)) {
-					setModelDir(modeldir);
-					// Check for the correct model type
-					ModelType mtype = ModelType.parse(getModelXMLAttribute(
-							"type", "model"));
-					if (mtype == ModelType.Unknown)
-						continue;
+			if (isValidModelDir(modeldir)) {
+				useModel(modeldir);
+				// Check for the correct model type
+				ModelType mtype = ModelType.parse(getModelXMLAttribute("type"));
+				if (mtype == ModelType.Unknown)
+					continue;
 
-					InputStream img = null;
-					String imgfile = getModelXMLTagValue("description.image");
-					if (modelFileExists(imgfile)) {
-						try {
-							img = getInStream(imgfile);
-						} catch (IOException e) {
-							// ignore
-						}
-					} else
-						img = getClass().getClassLoader().getResourceAsStream(
-								"notfound.png");
-					// Get model date
-					Date d = null;
+				InputStream img = null;
+				String imgfile = getModelXMLTagValue("description.image");
+				if (modelFileExists(imgfile)) {
 					try {
-						d = DateFormat
-								.getDateInstance()
-								.parse(getModelXMLTagValue("model.description.created"));
-					} catch (ParseException e) {
-						d = Calendar.getInstance().getTime();
+						img = getInStream(imgfile);
+					} catch (IOException e) {
+						// ignore
 					}
-					ModelDescriptor md = new ModelDescriptor(modeldir,
-							getModelXMLTagValue("description.name"), mtype,
-							img, d);
-					md.shortDescription = getModelXMLTagValue(
-							"description.short", "");
-					res.add(md);
+				} else
+					img = getClass().getClassLoader().getResourceAsStream("notfound.png");
+				// Get model date
+				Date d = null;
+				try {
+					d = DateFormat.getDateInstance().parse(getModelXMLTagValue("description.created"));
+				} catch (ParseException e) {
+					d = Calendar.getInstance().getTime();
 				}
-			} catch (Exception e) {
-				int a = 5;
-				//
+				ModelDescriptor md = new ModelDescriptor(modeldir, getModelXMLTagValue("description.name"), mtype, img,
+						d);
+				md.shortDescription = getModelXMLTagValue("description.short", "");
+				res.add(md);
 			}
 		}
 		return res;
@@ -323,6 +332,26 @@ public abstract class AModelManager {
 	 */
 	public String getModelDir() {
 		return mdir;
+	}
+
+	public FieldDescriptor[] getModelFieldTypes() {
+		FieldDescriptor[] res = null;
+		Element params = getModelXMLElement("visual.fields");
+		if (params != null) {
+			NodeList nl = params.getElementsByTagName("field");
+			res = new FieldDescriptor[nl.getLength()];
+			String hlp;
+			FieldDescriptor f;
+			for (int i = 0; i < nl.getLength(); i++) {
+				Node n = nl.item(i);
+				f = new FieldDescriptor(SolutionFieldType.valueOf(getNodeAttributeValue(n, "type")));
+				f.Name = n.getTextContent();
+				hlp = getNodeAttributeValue(n, "mapping");
+				f.Mapping = hlp != null ? FieldMapping.valueOf(hlp) : FieldMapping.UNKNOWN;
+				res[i] = f;
+			}
+		}
+		return res;
 	}
 
 	/**
@@ -379,6 +408,18 @@ public abstract class AModelManager {
 		return (e != null) ? getNodeAttributeValue(e, attrib_name) : null;
 	}
 
+	// private String[] getXMLElementChildNames(String tags) {
+	// String[] res = null;
+	// Element parent = getModelXMLElement(tags);
+	// if (parent != null) {
+	// res = new String[parent.getChildNodes().getLength()];
+	// for (int nidx = 0; nidx < res.length; nidx++) {
+	// res[nidx] = parent.getChildNodes().item(nidx).getNodeName();
+	// }
+	// }
+	// return res;
+	// }
+
 	private Element getModelXMLElement(String tags) {
 		if (modelxml != null) {
 			Element cur = modelxml.getDocumentElement();
@@ -430,6 +471,23 @@ public abstract class AModelManager {
 		return (res != null) ? res.getTextContent() : default_value;
 	}
 
+	/**
+	 * Returns the package of any java source files associated with this model.
+	 * Defaults to the default package (="") if none is given.
+	 * 
+	 * @return
+	 */
+	public String getModelPackageStr() {
+		String thepackage = getModelXMLTagValue("package");
+		return thepackage != null ? thepackage + "." : "";
+	}
+
+	/**
+	 * 
+	 * @param n
+	 * @param attrib_name
+	 * @return Attribute value or null if not existent
+	 */
 	private String getNodeAttributeValue(Node n, String attrib_name) {
 		assert n != null;
 		assert attrib_name != null;
@@ -462,14 +520,12 @@ public abstract class AModelManager {
 					name = "\u00B5_" + i;
 				}
 				// Add
-				p.addParam(name,
-						Double.parseDouble(getNodeAttributeValue(n, "min")),
+				p.addParam(name, Double.parseDouble(getNodeAttributeValue(n, "min")),
 						Double.parseDouble(getNodeAttributeValue(n, "max")));
 				// Extract default values and set as current, take min value if
 				// no default is set
 				String def = getNodeAttributeValue(n, "default");
-				cur[i] = def != null ? Double.parseDouble(def) : p
-						.getMinValue(i);
+				cur[i] = def != null ? Double.parseDouble(def) : p.getMinValue(i);
 			}
 			p.setCurrent(cur);
 			return p;
@@ -514,13 +570,11 @@ public abstract class AModelManager {
 					dv.validate(new DOMSource(modelxml));
 				}
 			} catch (SAXException se) {
-				Log.e("AModelManager", "Invalid model.xml: " + se.getMessage(),
-						se);
+				Log.e("AModelManager", "Invalid model.xml: " + se.getMessage(), se);
 				return false;
 			}
 		} catch (IOException e) {
-			throw new RuntimeException(
-					"I/O error while checking if model directory is valid.", e);
+			throw new RuntimeException("I/O error while checking if model directory is valid.", e);
 		}
 		// Restore old model dir
 		mdir = olddir;
@@ -549,29 +603,28 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * Sets the current directory as model directory.
+	 * Sets the specified source as current model path.
 	 * 
 	 * Requires the
 	 * 
-	 * @pre isValidModelDir(dir) == true
-	 * @post The model directory is set to dir and calls to getInStream etc.
-	 *       will serve files from dir.
+	 * @pre isValidModelDir(location) == true
+	 * @post The model is loaded from the specified location and calls to
+	 *       getInStream etc. will serve files from there.
 	 * 
-	 * @param dir
-	 *            The directory to change to
+	 * @param location
+	 *            The directory/path to change to
 	 * @throws ModelManagerException
-	 *             The current model directory does not contain a valid model.
+	 *             The current model directory, path or location does not
+	 *             contain a valid model.
 	 */
-	public void setModelDir(String dir) throws ModelManagerException {
-		assert isValidModelDir(dir);
+	public void useModel(String location) throws ModelManagerException {
+		assert isValidModelDir(location);
 
-		this.mdir = dir;
+		this.mdir = location;
 		try {
 			modelxml = db.parse(getInStream("model.xml"));
 		} catch (Exception e) {
-			throw new ModelManagerException(
-					"Unexpected Exception in AModelManager.setModelDir: "
-							+ e.getMessage(), e);
+			throw new ModelManagerException("Unexpected Exception in AModelManager.setModelDir: " + e.getMessage(), e);
 		}
 
 		modelxml.normalize();
