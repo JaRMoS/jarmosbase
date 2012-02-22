@@ -1,5 +1,9 @@
 package rmcommon.visual;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -14,6 +18,59 @@ import rmcommon.geometry.FieldMapping;
 import rmcommon.geometry.GeometryData;
 
 public class VisualizationData {
+
+	/**
+	 * The default size for the short buffers
+	 */
+	public static final int SHORT_MAX = 250000;
+
+	/**
+	 * The default size for the float buffers
+	 */
+	public static final int FLOAT_MAX = 1000000;
+
+	/**
+	 * Allocates short and float buffers for the rendering process and sets the
+	 * position to zero.
+	 * 
+	 */
+	public static FloatBuffer createFloatBuffer(int size) {
+		Log.d("VisualizationData", "Allocating GL float buffer:" + size * 4 + " bytes");
+		ByteBuffer fbb = ByteBuffer.allocateDirect(size * 4);
+		fbb.order(ByteOrder.nativeOrder()).position(0);
+		return fbb.asFloatBuffer();
+	}
+
+	/**
+	 * Creates the default float buffer of size FLOAT_MAX
+	 * 
+	 * @return
+	 */
+	public static FloatBuffer createFloatBuffer() {
+		return createFloatBuffer(FLOAT_MAX);
+	}
+
+	/**
+	 * Allocates short and float buffers for the rendering process and sets the
+	 * position to zero.
+	 * 
+	 */
+	public static ShortBuffer createShortBuffer(int size) {
+		Log.d("VisualizationData", "Allocating GL short buffer:" + size * 2 + " bytes");
+		ByteBuffer vbb = ByteBuffer.allocateDirect(size * 2);
+		vbb.order(ByteOrder.nativeOrder()).position(0);
+		return vbb.asShortBuffer();
+	}
+
+	/**
+	 * Creates the default float buffer of size FLOAT_MAX
+	 * 
+	 * @return
+	 */
+	public static ShortBuffer createShortBuffer() {
+		return createShortBuffer(SHORT_MAX);
+	}
+
 	/**
 	 * The node color data for each field
 	 */
@@ -21,14 +78,23 @@ public class VisualizationData {
 
 	private List<LogicSolutionField> logicfields;
 
+	private FloatBuffer floatBuf;
+	private ShortBuffer shortBuf;
+
 	public int numFrames;
 
 	private GeometryData gData;
 
 	public VisualizationData(GeometryData fGeo) {
+		this(fGeo, createFloatBuffer(), createShortBuffer());
+	}
+
+	public VisualizationData(GeometryData fGeo, FloatBuffer fBuf, ShortBuffer sBuf) {
 		// Use size one per default
 		fieldColors = new ArrayList<VisualFeature>(1);
 		this.gData = fGeo;
+		floatBuf = fBuf;
+		shortBuf = sBuf;
 	}
 
 	public GeometryData getGeometryData() {
@@ -80,15 +146,16 @@ public class VisualizationData {
 		logicfields = res.getLogicFields();
 	}
 
-//	/**
-//	 * Checks if the logical solution field is constant or not.
-//	 * 
-//	 * @param fieldnr
-//	 * @return
-//	 */
-//	public boolean isConstantFeature(int fieldnr) {
-//		return fieldColors != null ? fieldColors.get(fieldnr).isConstant() : true;
-//	}
+	// /**
+	// * Checks if the logical solution field is constant or not.
+	// *
+	// * @param fieldnr
+	// * @return
+	// */
+	// public boolean isConstantFeature(int fieldnr) {
+	// return fieldColors != null ? fieldColors.get(fieldnr).isConstant() :
+	// true;
+	// }
 
 	/**
 	 * calculate the color data (red green blue alpha) from the solution field
@@ -108,8 +175,8 @@ public class VisualizationData {
 				if (f.isConstant()) {
 					Log.d("VisData", "Using default colors " + Arrays.toString(cg.getDefaultColor(1))
 							+ " for constant logical field '" + f.descriptor + "'");
-					fieldColors.add(new VisualFeature(f.descriptor.Name + " (constant)", cg.getDefaultColor(f
-							.getSize())));
+					fieldColors.add(new VisualFeature(f.descriptor.Name + " (constant)",
+							cg.getDefaultColor(f.getSize())));
 				} else {
 					/*
 					 * Check if the colors have to be mapped from element to
@@ -202,5 +269,13 @@ public class VisualizationData {
 			}
 		}
 		return nodeCol;
+	}
+
+	public FloatBuffer getFloatBuffer() {
+		return floatBuf;
+	}
+
+	public ShortBuffer getShortBuffer() {
+		return shortBuf;
 	}
 }
