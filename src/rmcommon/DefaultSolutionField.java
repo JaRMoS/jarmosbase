@@ -79,6 +79,6 @@ public class DefaultSolutionField extends LogicSolutionField {
 		if (n == null || n == "") {
 			n = "(no name)";
 		}
-		return new VisualFeature[] { new VisualFeature(descriptor.Name, cg.computeColors(values)) };
+		return new VisualFeature[] { new VisualFeature(descriptor.Name, cg.computeColors(values), this) };
 	}
 }

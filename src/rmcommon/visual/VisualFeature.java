@@ -3,6 +3,8 @@
  */
 package rmcommon.visual;
 
+import rmcommon.LogicSolutionField;
+
 /**
  * 
  * Simple class for feature that can be visualized.
@@ -15,9 +17,12 @@ public class VisualFeature {
 	
 	public float[] Colors;
 	
-	public VisualFeature(String name, float[] colors) {
+	public LogicSolutionField Source;
+	
+	public VisualFeature(String name, float[] colors, LogicSolutionField source) {
 		Name = name;
 		Colors = colors;
+		this.Source = source;
 	}
 
 }

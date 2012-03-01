@@ -4,9 +4,6 @@
  */
 package rmcommon.visual;
 
-import org.junit.Test;
-
-import rmcommon.Log;
 
 /**
  * @author Daniel Wirtz

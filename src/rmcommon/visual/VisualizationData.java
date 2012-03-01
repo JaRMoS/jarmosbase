@@ -13,9 +13,11 @@ import rmcommon.Log;
 import rmcommon.DefaultSolutionField;
 import rmcommon.SimulationResult;
 import rmcommon.LogicSolutionField;
+import rmcommon.geometry.DefaultTransform;
 import rmcommon.geometry.DisplacementField;
 import rmcommon.geometry.FieldMapping;
 import rmcommon.geometry.GeometryData;
+import rmcommon.geometry.MeshTransform;
 
 public class VisualizationData {
 
@@ -74,9 +76,9 @@ public class VisualizationData {
 	/**
 	 * The node color data for each field
 	 */
-	public List<VisualFeature> fieldColors;
+	private List<VisualFeature> visFeatures;
 
-	private List<LogicSolutionField> logicfields;
+	// private List<LogicSolutionField> logicfields;
 
 	private FloatBuffer floatBuf;
 	private ShortBuffer shortBuf;
@@ -84,6 +86,7 @@ public class VisualizationData {
 	public int numFrames;
 
 	private GeometryData gData;
+	private SimulationResult simres;
 
 	public VisualizationData(GeometryData fGeo) {
 		this(fGeo, createFloatBuffer(), createShortBuffer());
@@ -91,7 +94,7 @@ public class VisualizationData {
 
 	public VisualizationData(GeometryData fGeo, FloatBuffer fBuf, ShortBuffer sBuf) {
 		// Use size one per default
-		fieldColors = new ArrayList<VisualFeature>(1);
+		visFeatures = new ArrayList<VisualFeature>(1);
 		this.gData = fGeo;
 		floatBuf = fBuf;
 		shortBuf = sBuf;
@@ -102,7 +105,7 @@ public class VisualizationData {
 	}
 
 	public int getNumVisFeatures() {
-		return fieldColors.size();
+		return visFeatures.size();
 	}
 
 	/**
@@ -110,40 +113,30 @@ public class VisualizationData {
 	 * @return The field colors for the specified field
 	 */
 	public VisualFeature getVisualizationFeature(int featureNr) {
-		return fieldColors.get(featureNr);
+		return visFeatures.get(featureNr);
 	}
 
 	public void useResult(SimulationResult res) {
-		numFrames = 0;
-		int tmp = 0;
-		logicfields = null;
+		if (res.getNumParts() != res.getTransforms().size()) {
+			throw new RuntimeException("Invalid simulation result, number of parts (" + res.getNumParts()
+					+ ") does not match transformation count (" + res.getTransforms().size()
+					+ "). Forgot to add default transformation?");
+		}
+
+		// Handle geometric transformations
+		gData.createMesh(res.getTransforms(), !res.hasDisplacements());
+
 		for (LogicSolutionField f : res.getLogicFields()) {
 			/**
 			 * Apply displacements to geometry for displacement fields (if there
 			 * should be more than one they are simply applied both)
 			 */
 			if (f instanceof DisplacementField) {
-				tmp = gData.addDisplacements((DisplacementField) f);
-			} else {
-				/**
-				 * Check resulting frames for each field
-				 */
-				tmp = f.getSize() / gData.numVertices;
-				if (f.descriptor.Mapping == FieldMapping.ELEMENT) {
-					tmp = f.getSize() / gData.faces;
-				}
-			}
-			Log.d("VisData", "Frames computed for field '" + f.descriptor.Name + "' (" + f.descriptor.Type + "): "
-					+ tmp);
-
-			if (numFrames == 0) {
-				numFrames = tmp;
-			} else if (tmp != numFrames) {
-				throw new RuntimeException("Incompatible amount of frames for different solution fields! Current:"
-						+ numFrames + ", new:" + tmp);
+				gData.addDisplacements((DisplacementField) f, res.getNumParts());
 			}
 		}
-		logicfields = res.getLogicFields();
+		simres = res;
+		numFrames = res.getNumParts();
 	}
 
 	// /**
@@ -168,15 +161,19 @@ public class VisualizationData {
 	 */
 	public void computeVisualFeatures(ColorGenerator cg) {
 		// Clear old colors
-		fieldColors.clear();
-		if (logicfields != null) {
-			for (int fieldNr = 0; fieldNr < logicfields.size(); fieldNr++) {
-				LogicSolutionField f = logicfields.get(fieldNr);
+		visFeatures.clear();
+		if (simres.getLogicFields() != null) {
+			// For displacement-only we add an default-color field
+			if (simres.hasDisplacements() && simres.getNumValueFields() == 1) {
+				visFeatures.add(new VisualFeature("Displacements", cg.getDefaultColor(gData.getNumVertices() * simres.getNumParts()), null));
+			}
+			for (int fieldNr = 0; fieldNr < simres.getLogicFields().size(); fieldNr++) {
+				LogicSolutionField f = simres.getLogicFields().get(fieldNr);
 				if (f.isConstant()) {
 					Log.d("VisData", "Using default colors " + Arrays.toString(cg.getDefaultColor(1))
 							+ " for constant logical field '" + f.descriptor + "'");
-					fieldColors.add(new VisualFeature(f.descriptor.Name + " (constant)",
-							cg.getDefaultColor(f.getSize())));
+					visFeatures.add(new VisualFeature(f.descriptor.Name + " (constant)",
+							cg.getDefaultColor(f.getSize()), f));
 				} else {
 					/*
 					 * Check if the colors have to be mapped from element to
@@ -189,15 +186,15 @@ public class VisualizationData {
 					 * logical field
 					 */
 					for (VisualFeature vf : f.getVisualFeatures(cg)) {
-						fieldColors.add(vf);
+						visFeatures.add(vf);
 					}
 				}
 			}
 		} else {
 			Log.w("VisData",
 					"No solution fields given, using default color data " + Arrays.toString(cg.getDefaultColor(1))
-							+ " for " + gData.numVertices + " vertices");
-			fieldColors.add(new VisualFeature("No field data", cg.getDefaultColor(gData.numVertices)));
+							+ " for " + gData.getNumVertices() + " vertices");
+			visFeatures.add(new VisualFeature("No field data", cg.getDefaultColor(gData.getNumVertices()), null));
 		}
 	}
 
@@ -211,65 +208,6 @@ public class VisualizationData {
 	// }
 	// return colors;
 	// }
-
-	/*
-	 * Conversion method for FV discretized field variables who give solution
-	 * values on faces rather than nodes.
-	 * 
-	 * Computes the node color as mean of all adjacent face colors.
-	 * 
-	 * TODO move this algorithm to ROMSim, as other visualization libraries
-	 * might be able to directly set colors for faces.
-	 */
-	private float[] elementToVertexColors(float[] faceCol) {
-		int numTimeSteps = faceCol.length / (4 * gData.faces);
-		float[] nodeCol = new float[numTimeSteps * gData.numVertices * 4];
-
-		// float T = numTimeSteps * nodes;
-		// for (int ts = 0; ts < T; ts++) {
-		// nodeCol[4*ts] = ts/T;
-		// nodeCol[4*ts+1] = 0;
-		// nodeCol[4*ts+2] = 0;
-		// nodeCol[4*ts+3] = 0.8f;
-		// }
-		// Perform summary for each timestep (if more than one)!
-		for (int ts = 0; ts < numTimeSteps; ts++) {
-			int face_off = ts * 4 * gData.faces;
-			int node_off = ts * 4 * gData.numVertices;
-			float[] valuesAdded = new float[gData.numVertices];
-			for (int f = 0; f < gData.faces; f++) {
-				// Edge 1
-				int n1 = gData.face[3 * f];
-				nodeCol[node_off + 4 * n1] += faceCol[face_off + 4 * f];
-				nodeCol[node_off + 4 * n1 + 1] += faceCol[face_off + 4 * f + 1];
-				nodeCol[node_off + 4 * n1 + 2] += faceCol[face_off + 4 * f + 2];
-				nodeCol[node_off + 4 * n1 + 3] += faceCol[face_off + 4 * f + 3];
-				valuesAdded[n1]++;
-				// Edge 2
-				int n2 = gData.face[3 * f + 1];
-				nodeCol[node_off + 4 * n2] += faceCol[face_off + 4 * f];
-				nodeCol[node_off + 4 * n2 + 1] += faceCol[face_off + 4 * f + 1];
-				nodeCol[node_off + 4 * n2 + 2] += faceCol[face_off + 4 * f + 2];
-				nodeCol[node_off + 4 * n2 + 3] += faceCol[face_off + 4 * f + 3];
-				valuesAdded[n2]++;
-				// Edge 3
-				int n3 = gData.face[3 * f + 2];
-				nodeCol[node_off + 4 * n3] += faceCol[face_off + 4 * f];
-				nodeCol[node_off + 4 * n3 + 1] += faceCol[face_off + 4 * f + 1];
-				nodeCol[node_off + 4 * n3 + 2] += faceCol[face_off + 4 * f + 2];
-				nodeCol[node_off + 4 * n3 + 3] += faceCol[face_off + 4 * f + 3];
-				valuesAdded[n3]++;
-			}
-			// Compute means
-			for (int n = 0; n < gData.numVertices; n++) {
-				nodeCol[node_off + 4 * n] /= valuesAdded[n];
-				nodeCol[node_off + 4 * n + 1] /= valuesAdded[n];
-				nodeCol[node_off + 4 * n + 2] /= valuesAdded[n];
-				nodeCol[node_off + 4 * n + 3] /= valuesAdded[n];
-			}
-		}
-		return nodeCol;
-	}
 
 	public FloatBuffer getFloatBuffer() {
 		return floatBuf;

@@ -7,6 +7,7 @@ import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 
 import rmcommon.Log;
+import rmcommon.geometry.FieldMapping;
 import rmcommon.geometry.GeometryData;
 
 /**
@@ -15,31 +16,33 @@ import rmcommon.geometry.GeometryData;
  */
 public class OpenGLBase {
 
+	public static final float FRAME_INCREASE = 0.01f;
+
 	/**
 	 * Offset for the color data in the float buffer, for each field
 	 */
-	protected int[] _color_off;
+	private int[] _color_off;
 	protected float _height = 800f;
 
 	/**
 	 * Offset for the faces data in short buffer
 	 */
-	protected int _faces_off = 0;
+	private int _faces_off = 0;
 
 	/**
 	 * Offset for the wireframe (edges) data in float buffer
 	 */
-	protected int _indexwf_off = 0;
+	private int _indexwf_off = 0;
 
 	/**
 	 * Offset in the float buffer for the normal data
 	 */
-	protected int _normal_off = 0;
+	private int[] _normal_off;
 
 	/**
 	 * Offset for the node data in float buffer
 	 */
-	protected int _vertex_off = 0;
+	private int[] _vertex_off;
 
 	protected float _width = 480f;
 
@@ -47,7 +50,7 @@ public class OpenGLBase {
 
 	// Camera control
 	protected Camera camera;
-	protected float current_framef = 0f;
+	protected float currentFramef = 0f;
 
 	/**
 	 * The currently plotted color field
@@ -56,7 +59,6 @@ public class OpenGLBase {
 
 	protected int currentFrame = 0, oldFrame = 0;
 
-	public GeometryData fGeoData;
 	protected VisualizationData vData;
 
 	protected FloatBuffer floatBuf;
@@ -67,6 +69,7 @@ public class OpenGLBase {
 
 	public boolean isFrontFace = true;
 	protected boolean ispaused = false;
+	protected String[] names;
 
 	protected float pos[] = { 0f, 0f, 0f }; // touchscreeen control data
 	/**
@@ -76,14 +79,52 @@ public class OpenGLBase {
 
 	public OpenGLBase(VisualizationData vData) {
 		this.vData = vData;
-		fGeoData = vData.getGeometryData();
 		// Use the (perhaps global) buffers from VisData
 		floatBuf = vData.getFloatBuffer();
 		shortBuf = vData.getShortBuffer();
 	}
 
+	protected void frameRendered() {
+		// Draw next animation frame if there are more than one
+		if (!ispaused && (vData.numFrames > 1 || _vertex_off.length > 1)) {
+			increaseFrame(FRAME_INCREASE);
+		}
+	}
+
 	public boolean isPaused() {
 		return ispaused;
+	}
+
+	protected int getCurrentColorOffset() {
+		return _color_off[currentColorField] + (currentFrame) * (vData.getGeometryData().getNumVertices() * 4);
+	}
+
+	protected int getCurrentVertexOffset() {
+		return _vertex_off[currentFrame];
+	}
+
+	protected int getFaceOffset() {
+		return _faces_off;
+	}
+
+	protected int getCurrentNormalsOffset() {
+		return _normal_off[currentFrame];
+	}
+
+	protected int getCurrentWireframeOffset() {
+		return _indexwf_off;
+	}
+
+	protected float getBoxSize() {
+		return vData.getGeometryData().boxsize;
+	}
+
+	protected boolean is2D() {
+		return vData.getGeometryData().is2D();
+	}
+
+	protected int getNumFaces() {
+		return vData.getGeometryData().numFaces;
 	}
 
 	/**
@@ -95,19 +136,20 @@ public class OpenGLBase {
 	 */
 	protected void initRendering() {
 
+		GeometryData gData = vData.getGeometryData();
 		/*
 		 * Camera setup
 		 */
 		camera = new Camera();
 		// set initial position away from the model in the y-direction
 		// looking toward the center of the model (0,0,0) horizontally
-		camera.setCamera(0f, -fGeoData.boxsize, 0f, 0f, 1f, 0f, 0f, 0f, 1f);
+		camera.setCamera(0f, -gData.boxsize, 0f, 0f, 1f, 0f, 0f, 0f, 1f);
 
 		/*
 		 * Fill the buffers
 		 */
 		currentFrame = 0;
-		current_framef = 0.0f;
+		currentFramef = 0.0f;
 
 		/*
 		 * Clear and init the buffers
@@ -121,29 +163,33 @@ public class OpenGLBase {
 		 * Node float buffer (also includes animations if displacements are
 		 * given)
 		 */
-		_vertex_off = curFloatBufOffset;
-		floatBuf.put(fGeoData.vertices);
-		curFloatBufOffset += fGeoData.vertices.length;
-		Log.d("OpenGLBase", "FloatBuffer: Added " + fGeoData.vertices.length + " floats for vertices. Fill state: "
-				+ curFloatBufOffset + "/" + floatBuf.capacity());
+		float[][] v = gData.getVertices();
+		_vertex_off = new int[v.length];
+		for (int i = 0; i < v.length; i++) {
+			_vertex_off[i] = curFloatBufOffset;
+			floatBuf.put(v[i]);
+			curFloatBufOffset += v[i].length;
+			Log.d("OpenGLBase", "FloatBuffer: Added " + v[i].length + " float values for " + gData.getNumVertices()
+					+ " vertices in set " + (i + 1) + ". Fill state: " + curFloatBufOffset + "/" + floatBuf.capacity());
+		}
 
 		/**
 		 * Element faces buffer
 		 */
 		_faces_off = curShortBufOffset;
-		shortBuf.put(fGeoData.face);
-		curShortBufOffset += fGeoData.face.length;
-		Log.d("OpenGLBase", "ShortBuffer: Added " + fGeoData.face.length + " short for element faces. Fill state: "
-				+ curShortBufOffset + "/" + shortBuf.capacity());
+		shortBuf.put(gData.faces);
+		curShortBufOffset += gData.faces.length;
+		Log.d("OpenGLBase", "ShortBuffer: Added " + gData.faces.length + " short values for " + gData.numFaces
+				+ " element faces. Fill state: " + curShortBufOffset + "/" + shortBuf.capacity());
 
 		/**
 		 * Element edges buffer
 		 */
 		_indexwf_off = curShortBufOffset;
-		shortBuf.put(fGeoData.face_wf);
-		curShortBufOffset += fGeoData.face_wf.length;
-		Log.d("OpenGLBase", "ShortBuffer: Added " + fGeoData.face_wf.length
-				+ " short for faces wireframe. Fill state: " + curShortBufOffset + "/" + shortBuf.capacity());
+		shortBuf.put(gData.faceWireframe);
+		curShortBufOffset += gData.faceWireframe.length;
+		Log.d("OpenGLBase", "ShortBuffer: Added " + gData.faceWireframe.length
+				+ " short values for faces wireframe. Fill state: " + curShortBufOffset + "/" + shortBuf.capacity());
 
 		/**
 		 * Colors for each visualization field.
@@ -152,22 +198,31 @@ public class OpenGLBase {
 		 * times the color data for a single solution.
 		 */
 		_color_off = new int[vData.getNumVisFeatures()];
+		names = new String[_color_off.length];
 		for (int i = 0; i < vData.getNumVisFeatures(); i++) {
 			_color_off[i] = curFloatBufOffset;
-			float[] col = vData.getVisualizationFeature(i).Colors;
+			VisualFeature vf = vData.getVisualizationFeature(i);
+			float[] col = vf.Colors;
+			names[i] = vf.Name;
+			if (vf.Source != null && vf.Source.descriptor.Mapping == FieldMapping.ELEMENT) {
+				col = elementToVertexColors(col);
+			}
 			floatBuf.put(col);
 			curFloatBufOffset += col.length;
-			Log.d("OpenGLBase", "FloatBuffer: Added " + col.length + " floats for color field " + (i + 1)
-					+ ". Fill state: " + curFloatBufOffset + "/" + floatBuf.capacity());
+			Log.d("OpenGLBase", "FloatBuffer: Added " + col.length + " floats for color field '" + vf.Name + "' ("
+					+ (i + 1) + "). Fill state: " + curFloatBufOffset + "/" + floatBuf.capacity());
 		}
 
 		// Init array for 3D object
-		if (!fGeoData.is2D()) {
-			_normal_off = curFloatBufOffset;
-			floatBuf.put(fGeoData.normal);
-			curFloatBufOffset += fGeoData.normal.length;
-			Log.d("OpenGLBase", "FloatBuffer: Added " + fGeoData.normal.length
-					+ " floats for 3D normal data. Fill state: " + curFloatBufOffset + "/" + floatBuf.capacity());
+		if (!gData.is2D()) {
+			_normal_off = new int[gData.normal.length];
+			for (int i = 0; i < _normal_off.length; i++) {
+				_normal_off[i] = curFloatBufOffset;
+				floatBuf.put(gData.normal[i]);
+				curFloatBufOffset += gData.normal[i].length;
+				Log.d("OpenGLBase", "FloatBuffer: Added " + gData.normal[i].length
+						+ " floats for 3D normal data. Fill state: " + curFloatBufOffset + "/" + floatBuf.capacity());
+			}
 		}
 	}
 
@@ -254,27 +309,8 @@ public class OpenGLBase {
 	public void nextColorField() {
 		currentColorField++;
 		currentColorField %= vData.getNumVisFeatures();
-		Log.d("GLRenderer", "Next color field index: " + currentColorField + ", total: " + _color_off.length);
-	}
-
-	/**
-	 * delayed frame increasing, only update animation after 5 frames
-	 * 
-	 * @param fdelay
-	 */
-	public void increase_frame(float fdelay) {
-		oldFrame = currentFrame;
-
-		current_framef += fdelay * vData.numFrames;
-		currentFrame = Math.round(current_framef);
-		if (currentFrame >= vData.numFrames) {
-			currentFrame = 0;
-			current_framef = 0;
-		}
-		if (currentFrame < 0) {
-			currentFrame = vData.numFrames - 1;
-			current_framef = vData.numFrames - 1;
-		}
+		Log.d("OpenGLBase", "Next color field '" + names[currentColorField] + "' (" + (currentColorField + 1) + "/"
+				+ _color_off.length + ")");
 	}
 
 	/**
@@ -282,18 +318,75 @@ public class OpenGLBase {
 	 * 
 	 * @param fdelay
 	 */
-	public void increase_ndframe(float fdelay) {
+	private void increaseFrame(float fdelay) {
 		oldFrame = currentFrame;
 
-		current_framef += fdelay;
-		currentFrame = Math.round(current_framef);
+		currentFramef += fdelay * vData.numFrames;
+		currentFrame = (int) Math.floor(currentFramef);
 		if (currentFrame >= vData.numFrames) {
 			currentFrame = 0;
-			current_framef = 0;
+			currentFramef = 0;
 		}
-		if (currentFrame < 0) {
-			currentFrame = vData.numFrames - 1;
-			current_framef = vData.numFrames - 1;
+		// Log.d("OGLBase", "Current frame:"+currentFrame);
+	}
+
+	/*
+	 * Conversion method for FV discretized field variables who give solution
+	 * values on faces rather than nodes.
+	 * 
+	 * Computes the node color as mean of all adjacent face colors.
+	 * 
+	 * TODO move this algorithm to ROMSim, as other visualization libraries
+	 * might be able to directly set colors for faces.
+	 */
+	private float[] elementToVertexColors(float[] faceCol) {
+		GeometryData gData = vData.getGeometryData();
+		int numTimeSteps = faceCol.length / (4 * gData.numFaces);
+		float[] nodeCol = new float[numTimeSteps * gData.getNumVertices() * 4];
+
+		// float T = numTimeSteps * nodes;
+		// for (int ts = 0; ts < T; ts++) {
+		// nodeCol[4*ts] = ts/T;
+		// nodeCol[4*ts+1] = 0;
+		// nodeCol[4*ts+2] = 0;
+		// nodeCol[4*ts+3] = 0.8f;
+		// }
+		// Perform summary for each timestep (if more than one)!
+		for (int ts = 0; ts < numTimeSteps; ts++) {
+			int face_off = ts * 4 * gData.numFaces;
+			int node_off = ts * 4 * gData.getNumVertices();
+			float[] valuesAdded = new float[gData.getNumVertices()];
+			for (int f = 0; f < gData.numFaces; f++) {
+				// Edge 1
+				int n1 = gData.faces[3 * f];
+				nodeCol[node_off + 4 * n1] += faceCol[face_off + 4 * f];
+				nodeCol[node_off + 4 * n1 + 1] += faceCol[face_off + 4 * f + 1];
+				nodeCol[node_off + 4 * n1 + 2] += faceCol[face_off + 4 * f + 2];
+				nodeCol[node_off + 4 * n1 + 3] += faceCol[face_off + 4 * f + 3];
+				valuesAdded[n1]++;
+				// Edge 2
+				int n2 = gData.faces[3 * f + 1];
+				nodeCol[node_off + 4 * n2] += faceCol[face_off + 4 * f];
+				nodeCol[node_off + 4 * n2 + 1] += faceCol[face_off + 4 * f + 1];
+				nodeCol[node_off + 4 * n2 + 2] += faceCol[face_off + 4 * f + 2];
+				nodeCol[node_off + 4 * n2 + 3] += faceCol[face_off + 4 * f + 3];
+				valuesAdded[n2]++;
+				// Edge 3
+				int n3 = gData.faces[3 * f + 2];
+				nodeCol[node_off + 4 * n3] += faceCol[face_off + 4 * f];
+				nodeCol[node_off + 4 * n3 + 1] += faceCol[face_off + 4 * f + 1];
+				nodeCol[node_off + 4 * n3 + 2] += faceCol[face_off + 4 * f + 2];
+				nodeCol[node_off + 4 * n3 + 3] += faceCol[face_off + 4 * f + 3];
+				valuesAdded[n3]++;
+			}
+			// Compute means
+			for (int n = 0; n < gData.getNumVertices(); n++) {
+				nodeCol[node_off + 4 * n] /= valuesAdded[n];
+				nodeCol[node_off + 4 * n + 1] /= valuesAdded[n];
+				nodeCol[node_off + 4 * n + 2] /= valuesAdded[n];
+				nodeCol[node_off + 4 * n + 3] /= valuesAdded[n];
+			}
 		}
+		return nodeCol;
 	}
 }

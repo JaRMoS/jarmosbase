@@ -89,9 +89,20 @@ public class DisplacementField extends LogicSolutionField {
 
 	@Override
 	public VisualFeature[] getVisualFeatures(ColorGenerator cg) {
-		return new VisualFeature[] {
-				new VisualFeature(descriptor.Name + "x displ", cg.computeColors(displ[0])),
-				new VisualFeature(descriptor.Name + "y displ", cg.computeColors(displ[1])),
-				new VisualFeature(descriptor.Name + "z displ", cg.computeColors(displ[2])) };
+		boolean twodim = true;
+		for (int i = 0; i < displ[2].length; i++) {
+			twodim &= displ[2][i] == 0;
+		}
+		if (twodim) {
+			return new VisualFeature[] {
+					new VisualFeature(descriptor.Name + "x displ", cg.computeColors(displ[0]), this),
+					new VisualFeature(descriptor.Name + "y displ", cg.computeColors(displ[1]), this) };
+		} else {
+			return new VisualFeature[] {
+					new VisualFeature(descriptor.Name + "x displ", cg.computeColors(displ[0]), this),
+					new VisualFeature(descriptor.Name + "y displ", cg.computeColors(displ[1]), this),
+					new VisualFeature(descriptor.Name + "z displ", cg.computeColors(displ[2]), this) };
+		}
+
 	}
 }

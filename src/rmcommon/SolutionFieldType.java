@@ -13,9 +13,9 @@ public enum SolutionFieldType {
 	ComplexValue(2),
 	RealValue(1);
 	
-	public final int requiredOutputFields;
+	public final int requiredDoFFields;
 	
 	private SolutionFieldType(int usesfields) {
-		requiredOutputFields = usesfields;
+		requiredDoFFields = usesfields;
 	}
 }

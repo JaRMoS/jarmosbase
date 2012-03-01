@@ -112,9 +112,8 @@ public class ComplexSolutionField extends LogicSolutionField {
 
 	@Override
 	public VisualFeature[] getVisualFeatures(ColorGenerator cg) {
-		return new VisualFeature[] {
-				new VisualFeature(descriptor.Name + " (norms)", cg.computeColors(norms)),
-				new VisualFeature(descriptor.Name + " (real)", cg.computeColors(real)),
-				new VisualFeature(descriptor.Name + " (imag)", cg.computeColors(imaginary)) };
+		return new VisualFeature[] { new VisualFeature(descriptor.Name + " (norms)", cg.computeColors(norms), this),
+				new VisualFeature(descriptor.Name + " (real)", cg.computeColors(real), this),
+				new VisualFeature(descriptor.Name + " (imag)", cg.computeColors(imaginary), this) };
 	}
 }
