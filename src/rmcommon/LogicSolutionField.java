@@ -3,8 +3,6 @@
  */
 package rmcommon;
 
-import java.util.List;
-
 import rmcommon.visual.ColorGenerator;
 import rmcommon.visual.VisualFeature;
 

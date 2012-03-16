@@ -2,8 +2,6 @@ package rmcommon.geometry;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import rmcommon.Log;
@@ -414,6 +412,7 @@ public class GeometryData extends Object {
 	 * @param d
 	 *            The displacement field
 	 * 
+	 * TODO scaling automatically
 	 * @return The number of vertex sets with different displacements available
 	 */
 	public void addDisplacements(DisplacementField d, int parts) {
@@ -422,9 +421,7 @@ public class GeometryData extends Object {
 		}
 
 		float scaling = 1f;//(d.getMax() - d.getMin()) / boxsize;
-		Log.d("GeoData", "Adding data from '" + d.descriptor + "', first vertices before: [" + vertices[0][0] + ","
-				+ vertices[0][1] + "," + vertices[0][2] + "," + vertices[0][3] + "," + vertices[0][4] + "], scaling: " + scaling);
-		Log.d("GeoData", "numVertices=" + numOrigVertices + ", vertices field length=" + vertices.length
+		Log.d("GeoData", "Adding displacements from "+d.descriptor+", numVertices=" + numOrigVertices + ", vertices field length=" + vertices.length
 				+ ", displacement field size=" + d.getSize() + " (x3=" + d.getSize() * 3 + "), parts=" + parts);
 		for (int vset = 0; vset < parts; vset++) {
 			for (int nodenr = 0; nodenr < numOrigVertices; nodenr++) {
@@ -434,8 +431,6 @@ public class GeometryData extends Object {
 				vertices[vset][3*nodenr + 2] += d.getZDisplacements()[idx] / scaling;
 			}
 		}
-		Log.d("GeoData", "First vertices after: [" + vertices[0][0] + "," + vertices[0][1] + "," + vertices[0][2] + ","
-				+ vertices[0][3] + "," + vertices[0][4] + "]");
 		compute3DNormalData();
 		centerModelGeometry();
 	}
@@ -456,7 +451,7 @@ public class GeometryData extends Object {
 	public void createMesh(List<MeshTransform> transforms, boolean update) {
 		vertices = new float[transforms.size()][];
 		int cnt = 0;
-		Log.d("GeoData", "Original   : " + Log.subArr(originalVertices,100));
+		//Log.d("GeoData", "Original   : " + Log.subArr(originalVertices,100));
 		for (MeshTransform m : transforms) {
 			vertices[cnt++] = m.transformMesh(originalVertices);
 			//Log.d("GeoData", "Transform "+cnt+": " + Log.subArr(vertices[cnt-1],100)+" ("+m.getClass().getName()+")");
@@ -464,7 +459,7 @@ public class GeometryData extends Object {
 			for (int i=0; i < 200;i++) {
 				diff[i] = originalVertices[i] - vertices[cnt-1][i];
 			}
-			Log.d("GeoData", "Diff "+cnt+": " + Log.subArr(diff,200));
+			//Log.d("GeoData", "Diff "+cnt+": " + Log.subArr(diff,200));
 		}
 		if (update) {
 			if (!is2D) {

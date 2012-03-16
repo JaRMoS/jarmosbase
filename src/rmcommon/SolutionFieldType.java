@@ -10,7 +10,7 @@ package rmcommon;
 public enum SolutionFieldType {
 	Displacement2D(2),
 	Displacement3D(3),
-	ComplexValue(2),
+	ComplexValue(1), // field units are Complex values
 	RealValue(1);
 	
 	public final int requiredDoFFields;

@@ -8,16 +8,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import rmcommon.ComplexSolutionField;
 import rmcommon.Log;
-import rmcommon.DefaultSolutionField;
-import rmcommon.SimulationResult;
 import rmcommon.LogicSolutionField;
-import rmcommon.geometry.DefaultTransform;
+import rmcommon.SimulationResult;
 import rmcommon.geometry.DisplacementField;
-import rmcommon.geometry.FieldMapping;
 import rmcommon.geometry.GeometryData;
-import rmcommon.geometry.MeshTransform;
 
 public class VisualizationData {
 

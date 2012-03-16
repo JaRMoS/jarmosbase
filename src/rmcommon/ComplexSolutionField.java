@@ -37,11 +37,11 @@ public class ComplexSolutionField extends LogicSolutionField {
 	}
 
 	public void setComplexValue(int index, Complex value) {
-		setComplexValue(index, (float) value.getReal(), (float) value.getReal());
+		setComplexValue(index, (float) value.getReal(), (float) value.getImaginary());
 	}
 
 	public void addComplexValue(int index, Complex value) {
-		setComplexValue(index, real[index] + (float) value.getReal(), imaginary[index] + (float) value.getReal());
+		setComplexValue(index, real[index] + (float) value.getReal(), imaginary[index] + (float) value.getImaginary());
 	}
 
 	public void addComplexValue(int index, float r, float i) {

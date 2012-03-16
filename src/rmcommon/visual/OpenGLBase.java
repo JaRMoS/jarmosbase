@@ -9,6 +9,7 @@ import java.nio.ShortBuffer;
 import rmcommon.Log;
 import rmcommon.geometry.FieldMapping;
 import rmcommon.geometry.GeometryData;
+import com.jogamp.opengl.util.awt.TextRenderer;
 
 /**
  * @author CreaByte
@@ -16,13 +17,17 @@ import rmcommon.geometry.GeometryData;
  */
 public class OpenGLBase {
 
+	public enum Orientation {
+		LANDSCAPE, PORTRAIT;
+	}
+
 	public static final float FRAME_INCREASE = 0.01f;
+	public static final int WIDTH = 762, HEIGHT = 480;
 
 	/**
 	 * Offset for the color data in the float buffer, for each field
 	 */
 	private int[] _color_off;
-	protected float _height = 800f;
 
 	/**
 	 * Offset for the faces data in short buffer
@@ -43,39 +48,50 @@ public class OpenGLBase {
 	 * Offset for the node data in float buffer
 	 */
 	private int[] _vertex_off;
-
-	protected float _width = 480f;
-
-	protected float[] AR = { 1f, 1f }; // aspect ratio
-
+	
+	private float[] aspectRatio = { WIDTH / HEIGHT, 1f };
+	
 	// Camera control
-	protected Camera camera;
-	protected float currentFramef = 0f;
-
+	private Camera camera;
+	
 	/**
 	 * The currently plotted color field
 	 */
-	protected int currentColorField = 0;
+	private int currentColorField = 0;
+	
+	private int currentFrame = 0, oldFrame = 0;
 
-	protected int currentFrame = 0, oldFrame = 0;
-
-	protected VisualizationData vData;
-
+	private float currentFramef = 0f;
+	
 	protected FloatBuffer floatBuf;
-	protected ShortBuffer shortBuf;
 
-	protected boolean isconstant = false;
+	/**
+	 * Flag that indicates whether the object rotates continuously in the 3D
+	 * case
+	 */
 	public boolean isContinuousRotation = true;
 
+	/**
+	 * Flag that indicates whether the front face should be rendered or not
+	 */
 	public boolean isFrontFace = true;
-	protected boolean ispaused = false;
-	protected String[] names;
 
-	protected float pos[] = { 0f, 0f, 0f }; // touchscreeen control data
+	private boolean ispaused = false;
+
+	private String[] names;
+	
+	private float pos[] = { 0f, 0f };
+	
 	/**
 	 * scaling ratio (for zooming)
 	 */
-	public float scale_rat = 1.0f;
+	private float scaleFactor = 1.0f;
+
+	protected ShortBuffer shortBuf;
+
+	private VisualizationData vData;
+
+	private int w = WIDTH, h = HEIGHT;
 
 	public OpenGLBase(VisualizationData vData) {
 		this.vData = vData;
@@ -84,47 +100,169 @@ public class OpenGLBase {
 		shortBuf = vData.getShortBuffer();
 	}
 
-	protected void frameRendered() {
-		// Draw next animation frame if there are more than one
-		if (!ispaused && (vData.numFrames > 1 || _vertex_off.length > 1)) {
-			increaseFrame(FRAME_INCREASE);
+	/**
+	 * @param posx
+	 * @param posy
+	 */
+	public void addPos(float posx, float posy) {
+		pos[0] += posx;
+		pos[1] += posy;
+	}
+
+	/*
+	 * Conversion method for FV discretized field variables who give solution
+	 * values on faces rather than nodes.
+	 * 
+	 * Computes the node color as mean of all adjacent face colors.
+	 * 
+	 * TODO move this algorithm to ROMSim, as other visualization libraries
+	 * might be able to directly set colors for faces.
+	 */
+	private float[] elementToVertexColors(float[] faceCol) {
+		GeometryData gData = vData.getGeometryData();
+		int numTimeSteps = faceCol.length / (4 * gData.numFaces);
+		float[] nodeCol = new float[numTimeSteps * gData.getNumVertices() * 4];
+
+		// float T = numTimeSteps * nodes;
+		// for (int ts = 0; ts < T; ts++) {
+		// nodeCol[4*ts] = ts/T;
+		// nodeCol[4*ts+1] = 0;
+		// nodeCol[4*ts+2] = 0;
+		// nodeCol[4*ts+3] = 0.8f;
+		// }
+		// Perform summary for each timestep (if more than one)!
+		for (int ts = 0; ts < numTimeSteps; ts++) {
+			int face_off = ts * 4 * gData.numFaces;
+			int node_off = ts * 4 * gData.getNumVertices();
+			float[] valuesAdded = new float[gData.getNumVertices()];
+			for (int f = 0; f < gData.numFaces; f++) {
+				// Edge 1
+				int n1 = gData.faces[3 * f];
+				nodeCol[node_off + 4 * n1] += faceCol[face_off + 4 * f];
+				nodeCol[node_off + 4 * n1 + 1] += faceCol[face_off + 4 * f + 1];
+				nodeCol[node_off + 4 * n1 + 2] += faceCol[face_off + 4 * f + 2];
+				nodeCol[node_off + 4 * n1 + 3] += faceCol[face_off + 4 * f + 3];
+				valuesAdded[n1]++;
+				// Edge 2
+				int n2 = gData.faces[3 * f + 1];
+				nodeCol[node_off + 4 * n2] += faceCol[face_off + 4 * f];
+				nodeCol[node_off + 4 * n2 + 1] += faceCol[face_off + 4 * f + 1];
+				nodeCol[node_off + 4 * n2 + 2] += faceCol[face_off + 4 * f + 2];
+				nodeCol[node_off + 4 * n2 + 3] += faceCol[face_off + 4 * f + 3];
+				valuesAdded[n2]++;
+				// Edge 3
+				int n3 = gData.faces[3 * f + 2];
+				nodeCol[node_off + 4 * n3] += faceCol[face_off + 4 * f];
+				nodeCol[node_off + 4 * n3 + 1] += faceCol[face_off + 4 * f + 1];
+				nodeCol[node_off + 4 * n3 + 2] += faceCol[face_off + 4 * f + 2];
+				nodeCol[node_off + 4 * n3 + 3] += faceCol[face_off + 4 * f + 3];
+				valuesAdded[n3]++;
+			}
+			// Compute means
+			for (int n = 0; n < gData.getNumVertices(); n++) {
+				nodeCol[node_off + 4 * n] /= valuesAdded[n];
+				nodeCol[node_off + 4 * n + 1] /= valuesAdded[n];
+				nodeCol[node_off + 4 * n + 2] /= valuesAdded[n];
+				nodeCol[node_off + 4 * n + 3] /= valuesAdded[n];
+			}
 		}
+		return nodeCol;
 	}
 
-	public boolean isPaused() {
-		return ispaused;
-	}
+	protected void frameRendered() {
+		/*
+		 * Draw next animation frame if there are more than one
+		 */
+		if (!ispaused && (vData.numFrames > 1 || _vertex_off.length > 1)) {
+			oldFrame = currentFrame;
 
-	protected int getCurrentColorOffset() {
-		return _color_off[currentColorField] + (currentFrame) * (vData.getGeometryData().getNumVertices() * 4);
-	}
+			currentFramef += FRAME_INCREASE * vData.numFrames;
+			currentFrame = (int) Math.floor(currentFramef);
+			if (currentFrame >= vData.numFrames) {
+				currentFrame = 0;
+				currentFramef = 0;
+			}
+		}
 
-	protected int getCurrentVertexOffset() {
-		return _vertex_off[currentFrame];
-	}
+		/*
+		 * Set yawing/pitching rotation angles and update camera
+		 */
+		camera.SetRotation(-pos[0], -pos[1]);
 
-	protected int getFaceOffset() {
-		return _faces_off;
-	}
-
-	protected int getCurrentNormalsOffset() {
-		return _normal_off[currentFrame];
-	}
-
-	protected int getCurrentWireframeOffset() {
-		return _indexwf_off;
+		/*
+		 * Update rotation if continuous
+		 */
+		if (isContinuousRotation) {
+			float minrot = 0.16f / scaleFactor;
+			float sgnx = Math.signum(pos[0]), sgny = Math.signum(pos[1]);
+			pos[0] = sgnx * Math.max(minrot, Math.min(24.00f, sgnx * pos[0] * 0.95f));
+			pos[1] = sgny * Math.max(minrot, Math.min(24.00f, sgny * pos[1] * 0.95f));
+		} else {
+			pos[0] = 0.0f;
+			pos[1] = 0.0f;
+		}
 	}
 
 	protected float getBoxSize() {
 		return vData.getGeometryData().boxsize;
 	}
 
-	protected boolean is2D() {
-		return vData.getGeometryData().is2D();
+	protected int getCurrentColorOffset() {
+		return _color_off[currentColorField] + (currentFrame) * (vData.getGeometryData().getNumVertices() * 4);
+	}
+
+	protected int getCurrentNormalsOffset() {
+		return _normal_off[currentFrame];
+	}
+
+	protected int getCurrentVertexOffset() {
+		return _vertex_off[currentFrame];
+	}
+
+	protected int getCurrentWireframeOffset() {
+		return _indexwf_off;
+	}
+
+	protected int getFaceOffset() {
+		return _faces_off;
+	}
+
+	protected int getHeight() {
+		return h;
 	}
 
 	protected int getNumFaces() {
 		return vData.getGeometryData().numFaces;
+	}
+
+	protected float[] getOrtographicProj() {
+		float exrat; // marginal extension ratio
+		if (is2D())
+			exrat = 0.65f;
+		else
+			exrat = 0.95f;
+		return new float[] { -exrat * getBoxSize() / aspectRatio[0], exrat * getBoxSize() / aspectRatio[0],
+				-exrat * getBoxSize() / aspectRatio[1], exrat * getBoxSize() / aspectRatio[1], -100, 100 };
+	}
+
+	protected float[] getRotationMatrix() {
+		return camera.M;
+	}
+	
+	protected float getScalingFactor() {
+		return scaleFactor;
+	}
+
+	protected int getWidth() {
+		return w;
+	}
+
+	protected float getXTranslation() {
+		return pos[0] * vData.getGeometryData().boxsize / 20f;
+	}
+
+	protected float getYTranslation() {
+		return pos[1] * vData.getGeometryData().boxsize / 20f;
 	}
 
 	/**
@@ -137,13 +275,14 @@ public class OpenGLBase {
 	protected void initRendering() {
 
 		GeometryData gData = vData.getGeometryData();
+
 		/*
 		 * Camera setup
+		 * 
+		 * set initial position away from the model in the y-direction looking
+		 * toward the center of the model (0,0,0) horizontally
 		 */
-		camera = new Camera();
-		// set initial position away from the model in the y-direction
-		// looking toward the center of the model (0,0,0) horizontally
-		camera.setCamera(0f, -gData.boxsize, 0f, 0f, 1f, 0f, 0f, 0f, 1f);
+		camera = new Camera(0f, -gData.boxsize, 0f, 0f, 1f, 0f, 0f, 0f, 1f);
 
 		/*
 		 * Fill the buffers
@@ -226,17 +365,58 @@ public class OpenGLBase {
 		}
 	}
 
+	public boolean is2D() {
+		return vData.getGeometryData().is2D();
+	}
+
+	public boolean isPaused() {
+		return ispaused;
+	}
+
 	/**
-	 * @param iCR
-	 * @param posx
-	 * @param posy
-	 * @param posz
+	 * Shows the next color field, if available.
 	 */
-	public void setPos(boolean iCR, float posx, float posy, float posz) {
-		pos[0] += posx;
-		pos[1] += posy;
-		pos[2] += posz;
-		isContinuousRotation = iCR;
+	public void nextColorField() {
+		currentColorField++;
+		currentColorField %= vData.getNumVisFeatures();
+		Log.d("OpenGLBase", "Next color field '" + names[currentColorField] + "' (" + (currentColorField + 1) + "/"
+				+ _color_off.length + ")");
+	}
+
+	/**
+	 * pause the animation if there is any
+	 */
+	public void pause() {
+		ispaused = true;
+	}
+
+	/**
+	 * reset zoom parameter
+	 */
+	public void resetZoom() {
+		scaleFactor = 1.0f;
+	}
+
+	/**
+	 * Sets the current orientation
+	 * 
+	 * @param pmode
+	 */
+	public void setOrientation(Orientation o) {
+		switch (o) {
+		case PORTRAIT:
+			w = HEIGHT;
+			h = WIDTH;
+			aspectRatio[0] = 1.0f;
+			aspectRatio[1] = w / h;
+			break;
+		case LANDSCAPE:
+			w = WIDTH;
+			h = HEIGHT;
+			aspectRatio[0] = h / w;
+			aspectRatio[1] = 1f;
+			break;
+		}
 	}
 
 	/**
@@ -251,142 +431,20 @@ public class OpenGLBase {
 	 */
 	public void zoom(float pzoom) {
 		pzoom = (pzoom < 1) ? 1 : pzoom;
-		scale_rat = pzoom;
+		scaleFactor = pzoom;
 	}
 
 	/**
 	 * zoom in
 	 */
-	public void zoomin() {
-		scale_rat += 0.1f;
+	public void zoomIn() {
+		scaleFactor *= 1.1f;
 	}
 
 	/**
 	 * zoom out
 	 */
-	public void zoomout() {
-		scale_rat -= 0.1f;
-		if (scale_rat < 0.25f)
-			scale_rat = 0.25f;
-	}
-
-	/**
-	 * pause the animation if there is any
-	 */
-	public void pause() {
-		ispaused = true;
-	}
-
-	/**
-	 * reset zoom parameter
-	 */
-	public void resetZoom() {
-		scale_rat = 1.0f;
-	}
-
-	/**
-	 * Sets the current orientation
-	 * 
-	 * @param pmode
-	 */
-	public void setOrientation(boolean pmode) {
-		if (pmode) { // portrait mode
-			_width = 480f;
-			_height = 762f;
-			AR[0] = 1.0f;
-			AR[1] = _width / _height;
-		} else { // landscape mode
-			_width = 762f;
-			_height = 480f;
-			AR[0] = _height / _width;
-			AR[1] = 1f;
-		}
-	}
-
-	/**
-	 * Shows the next color field, if available.
-	 */
-	public void nextColorField() {
-		currentColorField++;
-		currentColorField %= vData.getNumVisFeatures();
-		Log.d("OpenGLBase", "Next color field '" + names[currentColorField] + "' (" + (currentColorField + 1) + "/"
-				+ _color_off.length + ")");
-	}
-
-	/**
-	 * nondelayed frame increasing
-	 * 
-	 * @param fdelay
-	 */
-	private void increaseFrame(float fdelay) {
-		oldFrame = currentFrame;
-
-		currentFramef += fdelay * vData.numFrames;
-		currentFrame = (int) Math.floor(currentFramef);
-		if (currentFrame >= vData.numFrames) {
-			currentFrame = 0;
-			currentFramef = 0;
-		}
-		// Log.d("OGLBase", "Current frame:"+currentFrame);
-	}
-
-	/*
-	 * Conversion method for FV discretized field variables who give solution
-	 * values on faces rather than nodes.
-	 * 
-	 * Computes the node color as mean of all adjacent face colors.
-	 * 
-	 * TODO move this algorithm to ROMSim, as other visualization libraries
-	 * might be able to directly set colors for faces.
-	 */
-	private float[] elementToVertexColors(float[] faceCol) {
-		GeometryData gData = vData.getGeometryData();
-		int numTimeSteps = faceCol.length / (4 * gData.numFaces);
-		float[] nodeCol = new float[numTimeSteps * gData.getNumVertices() * 4];
-
-		// float T = numTimeSteps * nodes;
-		// for (int ts = 0; ts < T; ts++) {
-		// nodeCol[4*ts] = ts/T;
-		// nodeCol[4*ts+1] = 0;
-		// nodeCol[4*ts+2] = 0;
-		// nodeCol[4*ts+3] = 0.8f;
-		// }
-		// Perform summary for each timestep (if more than one)!
-		for (int ts = 0; ts < numTimeSteps; ts++) {
-			int face_off = ts * 4 * gData.numFaces;
-			int node_off = ts * 4 * gData.getNumVertices();
-			float[] valuesAdded = new float[gData.getNumVertices()];
-			for (int f = 0; f < gData.numFaces; f++) {
-				// Edge 1
-				int n1 = gData.faces[3 * f];
-				nodeCol[node_off + 4 * n1] += faceCol[face_off + 4 * f];
-				nodeCol[node_off + 4 * n1 + 1] += faceCol[face_off + 4 * f + 1];
-				nodeCol[node_off + 4 * n1 + 2] += faceCol[face_off + 4 * f + 2];
-				nodeCol[node_off + 4 * n1 + 3] += faceCol[face_off + 4 * f + 3];
-				valuesAdded[n1]++;
-				// Edge 2
-				int n2 = gData.faces[3 * f + 1];
-				nodeCol[node_off + 4 * n2] += faceCol[face_off + 4 * f];
-				nodeCol[node_off + 4 * n2 + 1] += faceCol[face_off + 4 * f + 1];
-				nodeCol[node_off + 4 * n2 + 2] += faceCol[face_off + 4 * f + 2];
-				nodeCol[node_off + 4 * n2 + 3] += faceCol[face_off + 4 * f + 3];
-				valuesAdded[n2]++;
-				// Edge 3
-				int n3 = gData.faces[3 * f + 2];
-				nodeCol[node_off + 4 * n3] += faceCol[face_off + 4 * f];
-				nodeCol[node_off + 4 * n3 + 1] += faceCol[face_off + 4 * f + 1];
-				nodeCol[node_off + 4 * n3 + 2] += faceCol[face_off + 4 * f + 2];
-				nodeCol[node_off + 4 * n3 + 3] += faceCol[face_off + 4 * f + 3];
-				valuesAdded[n3]++;
-			}
-			// Compute means
-			for (int n = 0; n < gData.getNumVertices(); n++) {
-				nodeCol[node_off + 4 * n] /= valuesAdded[n];
-				nodeCol[node_off + 4 * n + 1] /= valuesAdded[n];
-				nodeCol[node_off + 4 * n + 2] /= valuesAdded[n];
-				nodeCol[node_off + 4 * n + 3] /= valuesAdded[n];
-			}
-		}
-		return nodeCol;
+	public void zoomOut() {
+		scaleFactor = Math.max(scaleFactor * 0.9f, 0.15f);
 	}
 }

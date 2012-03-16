@@ -5,6 +5,7 @@ package rmcommon.visual;
 
 /**
  * Extracted the Camera class from GLRenderer
+ * 
  * @author CreaByte
  * 
  */
@@ -19,12 +20,16 @@ public class Camera {
 	public float[] Position, Center, View, Up, Right;
 
 	// initialize data
-	public Camera() {
-		Position = new float[3];
-		Center = new float[3];
-		View = new float[3];
-		Up = new float[3];
-		Right = new float[3];
+	public Camera(float px, float py, float pz, float vx, float vy, float vz, float ux, float uy, float uz) {
+		Position = new float[] { px, py, pz };
+		Center = new float[] { vx, vy, vz };
+		Up = new float[] { ux, uy, uz };
+		// calculate View and Right vectors
+		View = MinusVec(Center, Position); // pointing from the looking
+											// point toward the focus point
+		Right = NormVec(CrossVec(Up, View)); // right vector perpendicular
+												// to the the up and view
+												// vectors
 	}
 
 	// calculate the rotation matrix from the current information
@@ -85,8 +90,7 @@ public class Camera {
 	// normalize a vector
 	public float[] NormVec(float[] A) {
 		float[] C = new float[3];
-		float length = (float) Math.sqrt(A[0] * A[0] + A[1] * A[1] + A[2]
-				* A[2]);
+		float length = (float) Math.sqrt(A[0] * A[0] + A[1] * A[1] + A[2] * A[2]);
 		C[0] = A[0] / length;
 		C[1] = A[1] / length;
 		C[2] = A[2] / length;
@@ -126,23 +130,8 @@ public class Camera {
 	}
 
 	// set position, focus points and the up vector
-	public void setCamera(float px, float py, float pz, float vx, float vy,
-			float vz, float ux, float uy, float uz) {
-		Position[0] = px;
-		Position[1] = py;
-		Position[2] = pz;
-		Center[0] = vx;
-		Center[1] = vy;
-		Center[2] = vz;
-		Up[0] = ux;
-		Up[1] = uy;
-		Up[2] = uz;
-		// calculate View and Right vectors
-		View = MinusVec(Center, Position); // pointing from the looking
-											// point toward the focus point
-		Right = NormVec(CrossVec(Up, View)); // right vector perpendicular
-												// to the the up and view
-												// vectors
+	public void setCamera() {
+
 	}
 
 	// calculate the new position if we rotate rot1 degree about the current
