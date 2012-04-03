@@ -24,8 +24,17 @@ import java.net.URLClassLoader;
  * 
  */
 public class FileModelManager extends AModelManager {
+	
+	public static final String MODEL_DIR = "C:\\Users\\CreaByte\\Documents\\Uni\\Software\\JaRMoS\\JaRMoSModels"; 
 
 	private String root;
+	
+	/**
+	 * Calls the constructor with the FileModelManager.MODEL_DIR static string as root.
+	 */
+	public FileModelManager() {
+		this(MODEL_DIR);
+	}
 
 	/**
 	 * @param root

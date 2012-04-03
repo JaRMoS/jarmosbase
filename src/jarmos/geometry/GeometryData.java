@@ -9,7 +9,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.List;
 
-
 /**
  * 2011-08-24: - Started changes to this class and moved it to JRMCommons
  * project - Commented out a lot of functions whose purpose are not yet
@@ -31,7 +30,7 @@ public class GeometryData extends Object {
 	 * The model discretization type. Influences the way the color values are
 	 * computed (either given on vertex or face)
 	 */
-	public FieldMapping fieldMap = FieldMapping.VERTEX;
+//	public FieldMapping fieldMap = FieldMapping.VERTEX;
 
 	public int[] vertexLTFuncNr; // tell us which subdomain our vertices
 									// belong
@@ -247,7 +246,7 @@ public class GeometryData extends Object {
 
 		try {
 			// rb model or rbappmit-type model with new geometry
-			if (m.getModelType() == ModelType.JRB) {
+			if (m.getModelType() == ModelType.JRB || m.getModelType() == ModelType.JKerMor) {
 				loadGeometry(m);
 			} else if (m.getModelType() == ModelType.rbappmit) {
 				loadrbappmitGeometry(m);
@@ -306,7 +305,7 @@ public class GeometryData extends Object {
 		// Manually check if geometry is 2D
 		is2D = true;
 		for (int i = 0; i < numOrigVertices; i++) {
-			is2D &= originalVertices[i*3+2] == 0;
+			is2D &= originalVertices[i * 3 + 2] == 0;
 		}
 
 		/**
@@ -403,7 +402,8 @@ public class GeometryData extends Object {
 		}
 
 		// Read discretization type
-		fieldMap = FieldMapping.parse(m.getModelXMLTagValue("geometry.fieldmapping"));
+		// fieldMap =
+		// FieldMapping.parse(m.getModelXMLTagValue("geometry.fieldmapping"));
 	}
 
 	/**
@@ -413,23 +413,25 @@ public class GeometryData extends Object {
 	 * @param d
 	 *            The displacement field
 	 * 
-	 * TODO scaling automatically
+	 *            TODO scaling automatically
 	 * @return The number of vertex sets with different displacements available
 	 */
 	public void addDisplacements(DisplacementField d, int parts) {
-		if (fieldMap != FieldMapping.VERTEX) {
-			throw new RuntimeException("Displacements not possible for non-vertex based field mapping");
-		}
+		// if (fieldMap != FieldMapping.VERTEX) {
+		// throw new
+		// RuntimeException("Displacements not possible for non-vertex based field mapping");
+		// }
 
-		float scaling = 1f;//(d.getMax() - d.getMin()) / boxsize;
-		Log.d("GeoData", "Adding displacements from "+d.descriptor+", numVertices=" + numOrigVertices + ", vertices field length=" + vertices.length
-				+ ", displacement field size=" + d.getSize() + " (x3=" + d.getSize() * 3 + "), parts=" + parts);
+		float scaling = 1f;// (d.getMax() - d.getMin()) / boxsize;
+		Log.d("GeoData", "Adding displacements from " + d.descriptor + ", numVertices=" + numOrigVertices
+				+ ", vertices field length=" + vertices.length + ", displacement field size=" + d.getSize() + " (x3="
+				+ d.getSize() * 3 + "), parts=" + parts);
 		for (int vset = 0; vset < parts; vset++) {
 			for (int nodenr = 0; nodenr < numOrigVertices; nodenr++) {
 				int idx = vset * numOrigVertices + nodenr;
-				vertices[vset][3*nodenr] += d.getXDisplacements()[idx] / scaling;
-				vertices[vset][3*nodenr + 1] += d.getYDisplacements()[idx] / scaling;
-				vertices[vset][3*nodenr + 2] += d.getZDisplacements()[idx] / scaling;
+				vertices[vset][3 * nodenr] += d.getXDisplacements()[idx] / scaling;
+				vertices[vset][3 * nodenr + 1] += d.getYDisplacements()[idx] / scaling;
+				vertices[vset][3 * nodenr + 2] += d.getZDisplacements()[idx] / scaling;
 			}
 		}
 		compute3DNormalData();
@@ -452,15 +454,16 @@ public class GeometryData extends Object {
 	public void createMesh(List<MeshTransform> transforms, boolean update) {
 		vertices = new float[transforms.size()][];
 		int cnt = 0;
-		//Log.d("GeoData", "Original   : " + Log.subArr(originalVertices,100));
+		// Log.d("GeoData", "Original   : " + Log.subArr(originalVertices,100));
 		for (MeshTransform m : transforms) {
 			vertices[cnt++] = m.transformMesh(originalVertices);
-			//Log.d("GeoData", "Transform "+cnt+": " + Log.subArr(vertices[cnt-1],100)+" ("+m.getClass().getName()+")");
-			float[] diff = new float[200];
-			for (int i=0; i < 200;i++) {
-				diff[i] = originalVertices[i] - vertices[cnt-1][i];
-			}
-			//Log.d("GeoData", "Diff "+cnt+": " + Log.subArr(diff,200));
+			// Log.d("GeoData", "Transform "+cnt+": " +
+			// Log.subArr(vertices[cnt-1],100)+" ("+m.getClass().getName()+")");
+			// float[] diff = new float[200];
+			// for (int i=0; i < 200;i++) {
+			// diff[i] = originalVertices[i] - vertices[cnt-1][i];
+			// }
+			// Log.d("GeoData", "Diff "+cnt+": " + Log.subArr(diff,200));
 		}
 		if (update) {
 			if (!is2D) {

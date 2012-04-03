@@ -147,8 +147,8 @@ public abstract class AModelManager {
 				try {
 					SchemaFactory sf = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
 					Schema s = sf.newSchema(new StreamSource(in));
-					dv = s.newValidator();
-				} catch (IllegalArgumentException e) {
+					//dv = s.newValidator();
+				} catch (IllegalArgumentException e) { //
 					/*
 					 * See constructor comment on what happens here.. Set
 					 * Validator to null if the IllegalArgumentException gets
