@@ -7,6 +7,7 @@ import jarmos.IMessageHandler;
 import jarmos.ModelDescriptor;
 import jarmos.ModelType;
 import jarmos.Parameters;
+import jarmos.util.IProgressReporter;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -123,10 +124,10 @@ public class CachingModelManager extends AModelManager {
 	}
 
 	@Override
-	public List<ModelDescriptor> getModelDescriptors()
+	public List<ModelDescriptor> getModelDescriptors(IProgressReporter pr)
 			throws ModelManagerException {
 		// Only the source knows all models..
-		return source.getModelDescriptors();
+		return source.getModelDescriptors(pr);
 	}
 
 	@Override
@@ -236,6 +237,11 @@ public class CachingModelManager extends AModelManager {
 	@Override
 	public boolean xmlTagExists(String tagname) {
 		return dest.xmlTagExists(tagname);
+	}
+
+	@Override
+	protected String getLoadingMessage() {
+		return source.getLoadingMessage();
 	}
 
 }

@@ -9,6 +9,8 @@ import jarmos.Parameters;
 import jarmos.SolutionFieldType;
 import jarmos.geometry.FieldMapping;
 import jarmos.io.MathObjectReader.MachineFormats;
+import jarmos.util.ConsoleProgressReporter;
+import jarmos.util.IProgressReporter;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -238,6 +240,12 @@ public abstract class AModelManager {
 	 * @throws IOException
 	 */
 	protected abstract String[] getFolderList() throws IOException;
+	
+	/**
+	 * A short message that writes "loading SD models" dependent on the actual instance 
+	 * @return
+	 */
+	protected abstract String getLoadingMessage();
 
 	/**
 	 * Returns an InputStream instance streaming the contents of the file given
@@ -277,7 +285,7 @@ public abstract class AModelManager {
 	public MathObjectReader getMathObjReader() {
 		return mor;
 	}
-
+	
 	/**
 	 * Scans all directories given by getFolderList() for valid models and
 	 * returns a list of model descriptors for each valid model.
@@ -286,6 +294,18 @@ public abstract class AModelManager {
 	 * @throws ModelManagerException
 	 */
 	public List<ModelDescriptor> getModelDescriptors() throws ModelManagerException {
+		return getModelDescriptors(new ConsoleProgressReporter());
+	}
+
+	/**
+	 * Scans all directories given by getFolderList() for valid models and
+	 * returns a list of model descriptors for each valid model.
+	 * @param pr A IProgressReporter instance to report process in the loading to. 
+	 * 
+	 * @return A list of ModelDescriptors
+	 * @throws ModelManagerException
+	 */
+	public List<ModelDescriptor> getModelDescriptors(IProgressReporter pr) throws ModelManagerException {
 		ArrayList<ModelDescriptor> res = new ArrayList<ModelDescriptor>();
 		String[] list = null;
 		try {
@@ -293,7 +313,11 @@ public abstract class AModelManager {
 		} catch (IOException e) {
 			throw new ModelManagerException("Listing model folders failed.", e);
 		}
+		// Set loading message
+		pr.init(getLoadingMessage(), list.length);
+		int cnt = 0;
 		for (String modeldir : list) {
+			pr.progress(++cnt);
 			if (isValidModelDir(modeldir)) {
 				useModel(modeldir);
 				// Check for the correct model type
@@ -324,6 +348,7 @@ public abstract class AModelManager {
 				res.add(md);
 			}
 		}
+		pr.finish();
 		return res;
 	}
 

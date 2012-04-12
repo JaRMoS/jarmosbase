@@ -50,9 +50,9 @@ public class DefaultSolutionField extends LogicSolutionField {
 		// norms[index] = Math.abs(value);
 	}
 
-	public float[] getDoFs() {
-		return values;
-	}
+//	public float[] getDoFs() {
+//		return values;
+//	}
 
 	public float getMax() {
 		return max;

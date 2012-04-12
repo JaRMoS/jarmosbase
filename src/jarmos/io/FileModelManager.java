@@ -161,4 +161,9 @@ public class FileModelManager extends AModelManager {
 		return URI.create("file://" + root + "/" + getModelDir());
 	}
 
+	@Override
+	protected String getLoadingMessage() {
+		return "Reading models";
+	}
+
 }

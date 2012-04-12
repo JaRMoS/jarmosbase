@@ -107,4 +107,9 @@ public class WebModelManager extends AModelManager {
 		return URI.create(rooturl.toString());
 	}
 
+	@Override
+	protected String getLoadingMessage() {
+		return "Reading remote models";
+	}
+
 }
