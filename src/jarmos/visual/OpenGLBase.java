@@ -183,22 +183,27 @@ public class OpenGLBase {
 			}
 		}
 
-		/*
-		 * Set yawing/pitching rotation angles and update camera
-		 */
-		camera.SetRotation(-pos[0], -pos[1]);
-
-		/*
-		 * Update rotation if continuous
-		 */
-		if (isContinuousRotation) {
-			float minrot = 0.16f / scaleFactor;
-			float sgnx = Math.signum(pos[0]), sgny = Math.signum(pos[1]);
-			pos[0] = sgnx * Math.max(minrot, Math.min(24.00f, sgnx * pos[0] * 0.95f));
-			pos[1] = sgny * Math.max(minrot, Math.min(24.00f, sgny * pos[1] * 0.95f));
-		} else {
-			pos[0] = 0.0f;
-			pos[1] = 0.0f;
+		if (!is2D()) {
+			/*
+			 * Set yawing/pitching rotation angles and update camera
+			 */
+			camera.SetRotation(-pos[0], -pos[1]);
+			/*
+			 * Update rotation if continuous
+			 */
+			if (isContinuousRotation) {
+				float minrot = 0.16f / scaleFactor;
+				float sgnx = Math.signum(pos[0]), sgny = Math.signum(pos[1]);
+				pos[0] = sgnx
+						* Math.max(minrot,
+								Math.min(24.00f, sgnx * pos[0] * 0.95f));
+				pos[1] = sgny
+						* Math.max(minrot,
+								Math.min(24.00f, sgny * pos[1] * 0.95f));
+			} else {
+				pos[0] = 0.0f;
+				pos[1] = 0.0f;
+			}
 		}
 	}
 
@@ -257,11 +262,11 @@ public class OpenGLBase {
 	}
 
 	protected float getXTranslation() {
-		return pos[0] * vData.getGeometryData().boxsize / 20f;
+		return pos[0] * getBoxSize() / 20f;
 	}
 
 	protected float getYTranslation() {
-		return pos[1] * vData.getGeometryData().boxsize / 20f;
+		return pos[1] * getBoxSize() / 20f;
 	}
 
 	/**
@@ -407,12 +412,12 @@ public class OpenGLBase {
 			w = HEIGHT;
 			h = WIDTH;
 			aspectRatio[0] = 1.0f;
-			aspectRatio[1] = w / h;
+			aspectRatio[1] = (float)w / (float)h;
 			break;
 		case LANDSCAPE:
 			w = WIDTH;
 			h = HEIGHT;
-			aspectRatio[0] = h / w;
+			aspectRatio[0] = (float)h / (float)w;
 			aspectRatio[1] = 1f;
 			break;
 		}
