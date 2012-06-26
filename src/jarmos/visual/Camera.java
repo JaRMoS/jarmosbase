@@ -11,13 +11,14 @@ package jarmos.visual;
  */
 public class Camera {
 
-	public float[] M = new float[16]; // resulted rotation matrix
+	private float[] M = new float[16]; // resulted rotation matrix
+	
 	// View position, focus points and view, up and right vectors
 	// view vector pointing from view position to the focus point
 	// up vector perpendicular to the view vector and current horizontal
 	// plane
 	// right vector lies on the current horizontal plane
-	public float[] Position, Center, View, Up, Right;
+	private float[] Position, Center, View, Up, Right;
 
 	// initialize data
 	public Camera(float px, float py, float pz, float vx, float vy, float vz, float ux, float uy, float uz) {
@@ -31,10 +32,14 @@ public class Camera {
 												// to the the up and view
 												// vectors
 	}
+	
+	public float[] getRotationMatrix() {
+		return M;
+	}
 
 	// calculate the rotation matrix from the current information
 	// equivalent to gluLookat
-	public void cal_M() {
+	private void cal_M() {
 		float[] s, u, f;
 		// Calculate M for gluLookat
 		f = NormVec(MinusVec(Center, Position));
@@ -60,7 +65,7 @@ public class Camera {
 	}
 
 	// return cross product of two vectors
-	public float[] CrossVec(float[] A, float[] B) {
+	private float[] CrossVec(float[] A, float[] B) {
 		float[] C = new float[3];
 		C[0] = A[1] * B[2] - A[2] * B[1];
 		C[1] = A[2] * B[0] - A[0] * B[2];
@@ -69,7 +74,7 @@ public class Camera {
 	}
 
 	// return the subtraction from two vectors
-	public float[] MinusVec(float[] A, float[] B) {
+	private float[] MinusVec(float[] A, float[] B) {
 		float[] C = new float[3];
 		C[0] = A[0] - B[0];
 		C[1] = A[1] - B[1];
@@ -78,7 +83,7 @@ public class Camera {
 	}
 
 	// quaternion multiplication
-	public float[] MultQuat(float[] A, float[] B) {
+	private float[] MultQuat(float[] A, float[] B) {
 		float[] C = new float[4];
 		C[0] = A[3] * B[0] + A[0] * B[3] + A[1] * B[2] - A[2] * B[1];
 		C[1] = A[3] * B[1] - A[0] * B[2] + A[1] * B[3] + A[2] * B[0];
@@ -88,7 +93,7 @@ public class Camera {
 	}
 
 	// normalize a vector
-	public float[] NormVec(float[] A) {
+	private float[] NormVec(float[] A) {
 		float[] C = new float[3];
 		float length = (float) Math.sqrt(A[0] * A[0] + A[1] * A[1] + A[2] * A[2]);
 		C[0] = A[0] / length;
@@ -97,9 +102,9 @@ public class Camera {
 		return C;
 	}
 
-	// rotate current view vector an "angle" degree about an aribitrary
+	// rotate current view vector an "angle" degree about an arbitrary
 	// vector [x,y,z]
-	public void RotateCamera(float angle, float x, float y, float z) {
+	private void RotateCamera(float angle, float x, float y, float z) {
 		float[] temp = new float[4];
 		float[] conjtemp = new float[4];
 		float[] quat_view = new float[4];
@@ -127,11 +132,6 @@ public class Camera {
 		View[0] = result[0];
 		View[1] = result[1];
 		View[2] = result[2];
-	}
-
-	// set position, focus points and the up vector
-	public void setCamera() {
-
 	}
 
 	// calculate the new position if we rotate rot1 degree about the current

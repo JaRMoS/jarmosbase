@@ -9,6 +9,7 @@ import jarmos.geometry.GeometryData;
 
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
+import java.util.Arrays;
 
 /**
  * @author CreaByte
@@ -21,7 +22,6 @@ public class OpenGLBase {
 	}
 
 	public static final float FRAME_INCREASE = 0.01f;
-	public static final int WIDTH = 762, HEIGHT = 480;
 
 	/**
 	 * Offset for the color data in the float buffer, for each field
@@ -48,17 +48,17 @@ public class OpenGLBase {
 	 */
 	private int[] _vertex_off;
 	
-	private float[] aspectRatio = { WIDTH / HEIGHT, 1f };
-	
 	// Camera control
 	private Camera camera;
+	
+	private Orientation orientation = Orientation.LANDSCAPE;
 	
 	/**
 	 * The currently plotted color field
 	 */
 	private int currentColorField = 0;
 	
-	private int currentFrame = 0, oldFrame = 0;
+	private int currentFrame = 0;
 
 	private float currentFramef = 0f;
 	
@@ -79,26 +79,75 @@ public class OpenGLBase {
 
 	private String[] names;
 	
-	private float pos[] = { 0f, 0f };
+	private float pos[] = null;
 	
 	/**
 	 * scaling ratio (for zooming)
 	 */
 	private float scaleFactor = 1.0f;
+	
+	private float[] orthoproj = null;
 
 	protected ShortBuffer shortBuf;
 
 	private VisualizationData vData;
 
-	private int w = WIDTH, h = HEIGHT;
-
+	private int w,h;
+	
+	/**
+	 * Creates an OpenGLBase with the default size.
+	 * @param vData
+	 */
 	public OpenGLBase(VisualizationData vData) {
+		this(vData, 700, 400);
+	}
+
+	public OpenGLBase(VisualizationData vData, int width, int height) {
 		this.vData = vData;
 		// Use the (perhaps global) buffers from VisData
 		floatBuf = vData.getFloatBuffer();
 		shortBuf = vData.getShortBuffer();
+		setSize(width, height);
+	}
+	
+	public void setSize(int width, int height) {
+		w = width;
+		h = height;
+		updateOrthographicProjection();
+		//Log.d("OpenGLBase", "set size: w"+width+" h"+height);
 	}
 
+	/**
+	 * Sets the initial position away from the model in the y-direction looking
+	 * toward the center of the model (0,0,0) horizontally
+	 */
+	public void resetView() {
+		camera = new Camera(0f, -getBoxSize(), 0f, 0f, 1f, 0f, 0f, 0f, 1f);
+		pos = new float[]{ 0f, 0f };
+		scaleFactor = 1.0f;
+		isFrontFace = true;
+		//Log.d("OpenGLBase", "reset view!");
+	}
+	
+	private void updateOrthographicProjection() {
+		float exrat, ax=0, ay=0; // marginal extension ratio
+		if (is2D())
+			exrat = 0.65f * getBoxSize();
+		else
+			exrat = 0.95f * getBoxSize();
+		switch (orientation) {
+		case PORTRAIT:
+			ax = 1.0f;
+			ay = (float)w / (float)h;
+			break;
+		case LANDSCAPE:			
+			ax = (float)h / (float)w;
+			ay = 1.0f;
+		}
+		orthoproj = new float[] { -exrat / ax, exrat / ax, -exrat / ay, exrat / ay, -100, 100 };
+		//Log.d("OpenGLBase", "OrthProj update: "+Arrays.toString(orthoproj));
+	}
+	
 	/**
 	 * @param posx
 	 * @param posy
@@ -173,8 +222,6 @@ public class OpenGLBase {
 		 * Draw next animation frame if there are more than one
 		 */
 		if (!ispaused && (vData.numFrames > 1 || _vertex_off.length > 1)) {
-			oldFrame = currentFrame;
-
 			currentFramef += FRAME_INCREASE * vData.numFrames;
 			currentFrame = (int) Math.floor(currentFramef);
 			if (currentFrame >= vData.numFrames) {
@@ -200,9 +247,6 @@ public class OpenGLBase {
 				pos[1] = sgny
 						* Math.max(minrot,
 								Math.min(24.00f, sgny * pos[1] * 0.95f));
-			} else {
-				pos[0] = 0.0f;
-				pos[1] = 0.0f;
 			}
 		}
 	}
@@ -231,6 +275,10 @@ public class OpenGLBase {
 		return _faces_off;
 	}
 
+	/**
+	 * 
+	 * @return The height with respect to LANDSCAPE orientation
+	 */
 	protected int getHeight() {
 		return h;
 	}
@@ -240,23 +288,21 @@ public class OpenGLBase {
 	}
 
 	protected float[] getOrtographicProj() {
-		float exrat; // marginal extension ratio
-		if (is2D())
-			exrat = 0.65f;
-		else
-			exrat = 0.95f;
-		return new float[] { -exrat * getBoxSize() / aspectRatio[0], exrat * getBoxSize() / aspectRatio[0],
-				-exrat * getBoxSize() / aspectRatio[1], exrat * getBoxSize() / aspectRatio[1], -100, 100 };
+		return orthoproj;
 	}
 
 	protected float[] getRotationMatrix() {
-		return camera.M;
+		return camera.getRotationMatrix();
 	}
 	
 	protected float getScalingFactor() {
 		return scaleFactor;
 	}
 
+	/**
+	 * 
+	 * @return The width with respect to LANDSCAPE orientation
+	 */
 	protected int getWidth() {
 		return w;
 	}
@@ -280,13 +326,7 @@ public class OpenGLBase {
 
 		GeometryData gData = vData.getGeometryData();
 
-		/*
-		 * Camera setup
-		 * 
-		 * set initial position away from the model in the y-direction looking
-		 * toward the center of the model (0,0,0) horizontally
-		 */
-		camera = new Camera(0f, -gData.boxsize, 0f, 0f, 1f, 0f, 0f, 0f, 1f);
+		resetView();
 
 		/*
 		 * Fill the buffers
@@ -373,9 +413,9 @@ public class OpenGLBase {
 		return vData.getGeometryData().is2D();
 	}
 
-	public boolean isPaused() {
-		return ispaused;
-	}
+//	public boolean isPaused() {
+//		return ispaused;
+//	}
 
 	/**
 	 * Shows the next color field, if available.
@@ -386,19 +426,22 @@ public class OpenGLBase {
 		Log.d("OpenGLBase", "Next color field '" + names[currentColorField] + "' (" + (currentColorField + 1) + "/"
 				+ _color_off.length + ")");
 	}
+	
+	/**
+	 * Shows the next color field, if available.
+	 */
+	public void prevColorField() {
+		if (--currentColorField == -1)
+			currentColorField = vData.getNumVisFeatures()-1;
+		Log.d("OpenGLBase", "Previous color field '" + names[currentColorField] + "' (" + (currentColorField + 1) + "/"
+				+ _color_off.length + ")");
+	}
 
 	/**
 	 * pause the animation if there is any
 	 */
-	public void pause() {
-		ispaused = true;
-	}
-
-	/**
-	 * reset zoom parameter
-	 */
-	public void resetZoom() {
-		scaleFactor = 1.0f;
+	public void togglePause() {
+		ispaused = !ispaused;
 	}
 
 	/**
@@ -407,36 +450,18 @@ public class OpenGLBase {
 	 * @param pmode
 	 */
 	public void setOrientation(Orientation o) {
-		switch (o) {
-		case PORTRAIT:
-			w = HEIGHT;
-			h = WIDTH;
-			aspectRatio[0] = 1.0f;
-			aspectRatio[1] = (float)w / (float)h;
-			break;
-		case LANDSCAPE:
-			w = WIDTH;
-			h = HEIGHT;
-			aspectRatio[0] = (float)h / (float)w;
-			aspectRatio[1] = 1f;
-			break;
-		}
+		Log.d("OpenGLBase", "set orientation:"+o.toString());
+		orientation = o;
+		updateOrthographicProjection();
 	}
 
-	/**
-	 * resume animation
-	 */
-	public void unpause() {
-		ispaused = false;
-	}
-
-	/**
-	 * @param pzoom
-	 */
-	public void zoom(float pzoom) {
-		pzoom = (pzoom < 1) ? 1 : pzoom;
-		scaleFactor = pzoom;
-	}
+//	/**
+//	 * @param pzoom
+//	 */
+//	public void zoom(float pzoom) {
+//		pzoom = (pzoom < 1) ? 1 : pzoom;
+//		scaleFactor = pzoom;
+//	}
 
 	/**
 	 * zoom in
