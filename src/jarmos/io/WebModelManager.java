@@ -42,6 +42,10 @@ public class WebModelManager extends AModelManager {
 		this.rooturl = rooturl;
 	}
 	
+	public WebModelManager(String url) throws MalformedURLException {
+		this(new URL(url));
+	}
+		
 //	/**
 //	 * @return The root web url
 //	 */
@@ -82,6 +86,7 @@ public class WebModelManager extends AModelManager {
 		while (s.hasNextLine()) {
 			folders.add(s.nextLine());
 		}
+		s.close();
 		if (folders.size() > 0) {
 			return folders.toArray(new String[0]);
 		} else {

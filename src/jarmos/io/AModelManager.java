@@ -647,6 +647,7 @@ public abstract class AModelManager {
 		assert isValidModelDir(location);
 
 		this.mdir = location;
+		Log.d("ModelManager", "Loading model from " + getModelURI());
 		try {
 			modelxml = db.parse(getInStream("model.xml"));
 		} catch (Exception e) {

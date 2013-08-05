@@ -25,7 +25,8 @@ import java.net.URLClassLoader;
  */
 public class FileModelManager extends AModelManager {
 	
-	public static final String MODEL_DIR = "C:\\Users\\CreaByte\\Documents\\Uni\\Software\\JaRMoS\\JaRMoSModels"; 
+	//public static final String MODEL_DIR = "C:\\Users\\CreaByte\\Documents\\Uni\\Software\\JaRMoS\\JaRMoSModels";
+	public static final String MODEL_DIR = "/home/dwirtz/aghhome/Software/Eclipse/JaRMoS/JaRMoSModels";
 
 	private String root;
 	
