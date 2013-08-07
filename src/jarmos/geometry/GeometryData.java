@@ -10,32 +10,64 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * 2011-08-24: - Started changes to this class and moved it to JRMCommons
- * project - Commented out a lot of functions whose purpose are not yet
- * investigated but also not used in ROMSim. - New class name GeometryData
- * (previously GLObject) and some renames for readability improvement
+ * This is a container class for all geometry-related data of a reduced model.
  * 
- * @author dwirtz @date 2011-08-24
+ * 2011-08-24:
  * 
- *         TODO check if all tags in model.xml are needed
+ * @li Started changes to this class and moved it to JaRMoSBase project
+ * @li Commented out a lot of functions whose purpose are not yet investigated but also not used in JaRMoS.
+ * @li New class name GeometryData (previously GLObject) and some renames for readability improvement
  * 
- *         TODO create subdomains property/management/classes
+ * @author Daniel Wirtz @date 2013-08-07 @date 2011-08-24
+ * 
  */
-public class GeometryData extends Object {
+public class GeometryData {
 
-	@SuppressWarnings("unused")
-	private int subdomains; // number of subdomains
+	public float boxsize; // bounding box size
+
+	// /**
+	// * Contains the number of nodes whose values are given by dirichlet values.
+	// */
+	// public short[] dir_nodes = null;
+	//
+	// /**
+	// * The dirichlet values for the dir_nodes. The first index is the number of the field the value is dirichlet for,
+	// * and the second index denotes x,y and z offsets from original positions defined in node.
+	// */
+	// public float[][] dir_values = null;
 
 	/**
-	 * The model discretization type. Influences the way the color values are
-	 * computed (either given on vertex or face)
+	 * tell us which subdomain our faces belong to
 	 */
-//	public FieldMapping fieldMap = FieldMapping.VERTEX;
+	private int[] domain_of_face;
 
-	public int[] vertexLTFuncNr; // tell us which subdomain our vertices
-									// belong
-									// to
-	private int[] domain_of_face; // tell us which subdomain our faces belong to
+	/**
+	 * Edges data. Each face ranges over two short values, giving the indices of the two corner nodes/vertices.
+	 */
+	public short[] edges; // edge data
+
+	/**
+	 * Faces data. Each face ranges over three short values, giving the indices of the three corner nodes/vertices.
+	 */
+	public short[] faces; // face data
+
+	/**
+	 * Faces edge/wireframe data.
+	 * 
+	 * Each wireframe ranges over six short values, giving the indices of the three node connecting edges in the order
+	 * n1->n2, n2->n3, n3->n1.
+	 */
+	public short[] faceWireframe;
+
+	/**
+	 * For 3D geometry this contains the face normal data (three coordinates (x,y,z) per face)
+	 */
+	public float[][] fnormal;
+
+	/**
+	 * is our model 2D?
+	 */
+	private boolean is2D = true;
 
 	/**
 	 * the bounding box (xyz range) of the model
@@ -43,89 +75,90 @@ public class GeometryData extends Object {
 	public float[] nminmax = { 1e9f, 1e9f, 1e9f, -1e9f, -1e9f, -1e9f };
 
 	/**
-	 * number of vertices
+	 * For 3D geometry this contains the local node normal data (three coordinates (x,y,z) per node)
 	 */
-	private int numOrigVertices;
+	public float[][] normal;
 
 	/**
-	 * The number of (original) vertices of the geometry
-	 * 
-	 * @return the numVertices
-	 */
-	public int getNumVertices() {
-		return numOrigVertices;
-	}
-
-	/**
-	 * number of faces
+	 * Number of faces
 	 */
 	public int numFaces;
 
 	/**
-	 * The node coordinate vector of size 3*nodes, each node described by
-	 * (x,y,z) coordinates
+	 * Number of vertices
+	 */
+	private int numOrigVertices;
+
+	/**
+	 * The reference nodes. A copy of the original nodes array which might be modified for models with changing
+	 * geometry.
+	 */
+	public float[] originalVertices;
+
+	/**
+	 * number of subdomains
+	 */
+	@SuppressWarnings("unused")
+	private int subdomains;
+
+	/**
+	 * tell us which subdomain our vertices belong to
+	 */
+	public int[] vertexLTFuncNr;
+
+	/**
+	 * The node coordinate vector of size 3*nodes, each node described by (x,y,z) coordinates
 	 */
 	private float[][] vertices = null; // vertex data
 
 	/**
-	 * For 3D geometry this contains the local node normal data (three
-	 * coordinates (x,y,z) per node)
+	 * Sets the displacement data for this geometry according to the DisplacementField provided.
+	 * 
+	 * @param d
+	 * The displacement field
+	 * 
+	 * TODO Include automatic scaling?
+	 * @return The number of vertex sets with different displacements available
 	 */
-	public float[][] normal; // vertex normal data
+	public void addDisplacements(DisplacementField d, int parts) {
+		float scaling = 1f;// (d.getMax() - d.getMin()) / boxsize;
+		Log.d("GeoData", "Adding displacements from " + d.descriptor + ", numVertices=" + numOrigVertices
+				+ ", vertices field length=" + vertices.length + ", displacement field size=" + d.getSize() + " (x3="
+				+ d.getSize() * 3 + "), parts=" + parts);
+		for (int vset = 0; vset < parts; vset++) {
+			for (int nodenr = 0; nodenr < numOrigVertices; nodenr++) {
+				int idx = vset * numOrigVertices + nodenr;
+				vertices[vset][3 * nodenr] += d.getXDisplacements()[idx] / scaling;
+				vertices[vset][3 * nodenr + 1] += d.getYDisplacements()[idx] / scaling;
+				vertices[vset][3 * nodenr + 2] += d.getZDisplacements()[idx] / scaling;
+			}
+		}
+		compute3DNormalData();
+		centerModelGeometry();
+	}
 
 	/**
-	 * For 3D geometry this contains the face normal data (three coordinates
-	 * (x,y,z) per face)
+	 * move the model center to (0,0,0)
 	 */
-	public float[][] fnormal; // face normal data
-
-	/**
-	 * The reference nodes. A copy of the original nodes array which might be
-	 * modified for models with changing geometry.
-	 */
-	public float[] originalVertices; // the original vertex data
-
-	/**
-	 * Faces data. Each face ranges over three short values, giving the indices
-	 * of the three corner nodes/vertices.
-	 */
-	public short[] faces; // face data
-
-	/**
-	 * Edges data. Each face ranges over two short values, giving the indices of
-	 * the two corner nodes/vertices.
-	 */
-	public short[] edges; // edge data
-
-	/**
-	 * Contains the number of nodes whose values are given by dirichlet values.
-	 */
-	public short[] dir_nodes = null;
-
-	/**
-	 * The dirichlet values for the dir_nodes. The first index is the number of
-	 * the field the value is dirichlet for, and the second index denotes x,y
-	 * and z offsets from original positions defined in node.
-	 */
-	public float[][] dir_values = null;
-
-	/**
-	 * Faces edge/wireframe data. Each wireframe ranges over six short values,
-	 * giving the indices of the three node connecting edges in the order
-	 * n1->n2, n2->n3, n3->n1.
-	 */
-	public short[] faceWireframe; // edge data
-
-	public float boxsize; // bounding box size
-
-	private boolean is2D = true; // is our model 2D?
-
-	// public GeometryData() {
-	// vertexSets = new ArrayList<float[]>();
-	// }
-
-	public float[][] getVertices() {
-		return vertices;
+	private void centerModelGeometry() {
+		computeBoundingBox();
+		float xcen = 0.5f * (nminmax[0] + nminmax[3]);
+		float ycen = 0.5f * (nminmax[1] + nminmax[4]);
+		float zcen = 0.5f * (nminmax[2] + nminmax[5]);
+		for (int vset = 0; vset < vertices.length; vset++) {
+			for (int i = 0; i < vertices[vset].length / 3; i++) {
+				vertices[vset][i * 3 + 0] -= xcen;
+				vertices[vset][i * 3 + 1] -= ycen;
+				vertices[vset][i * 3 + 2] -= zcen;
+			}
+		}
+		// recalculating minmax box
+		nminmax[0] -= xcen;
+		nminmax[3] += xcen;
+		nminmax[1] -= ycen;
+		nminmax[4] += ycen;
+		nminmax[2] -= zcen;
+		nminmax[5] += zcen;
 	}
 
 	/**
@@ -186,30 +219,6 @@ public class GeometryData extends Object {
 	}
 
 	/**
-	 * move the model center to (0,0,0)
-	 */
-	private void centerModelGeometry() {
-		computeBoundingBox();
-		float xcen = 0.5f * (nminmax[0] + nminmax[3]);
-		float ycen = 0.5f * (nminmax[1] + nminmax[4]);
-		float zcen = 0.5f * (nminmax[2] + nminmax[5]);
-		for (int vset = 0; vset < vertices.length; vset++) {
-			for (int i = 0; i < vertices[vset].length / 3; i++) {
-				vertices[vset][i * 3 + 0] -= xcen;
-				vertices[vset][i * 3 + 1] -= ycen;
-				vertices[vset][i * 3 + 2] -= zcen;
-			}
-		}
-		// recalculating minmax box
-		nminmax[0] -= xcen;
-		nminmax[3] += xcen;
-		nminmax[1] -= ycen;
-		nminmax[4] += ycen;
-		nminmax[2] -= zcen;
-		nminmax[5] += zcen;
-	}
-
-	/**
 	 * calculate bounding box data
 	 */
 	private void computeBoundingBox() {
@@ -234,6 +243,117 @@ public class GeometryData extends Object {
 		boxsize = (nminmax[3] - nminmax[0]) > boxsize ? (nminmax[3] - nminmax[0]) : boxsize;
 		boxsize = (nminmax[4] - nminmax[1]) > boxsize ? (nminmax[4] - nminmax[1]) : boxsize;
 		boxsize = (nminmax[5] - nminmax[2]) > boxsize ? (nminmax[5] - nminmax[2]) : boxsize;
+	}
+
+	/**
+	 * Transforms the original vertices by all given MeshTransforms in the list and concatenates the results in a large
+	 * vertices array.
+	 * 
+	 * @param transforms
+	 */
+	public void createMesh(List<MeshTransform> transforms, boolean update) {
+		vertices = new float[transforms.size()][];
+		int cnt = 0;
+		// Log.d("GeoData", "Original   : " + Log.subArr(originalVertices,100));
+		for (MeshTransform m : transforms) {
+			vertices[cnt++] = m.transformMesh(originalVertices);
+			// Log.d("GeoData", "Transform "+cnt+": " +
+			// Log.subArr(vertices[cnt-1],100)+" ("+m.getClass().getName()+")");
+			// float[] diff = new float[200];
+			// for (int i=0; i < 200;i++) {
+			// diff[i] = originalVertices[i] - vertices[cnt-1][i];
+			// }
+			// Log.d("GeoData", "Diff "+cnt+": " + Log.subArr(diff,200));
+		}
+		if (update) {
+			if (!is2D) {
+				compute3DNormalData();
+			}
+			centerModelGeometry();
+		}
+	}
+
+	/**
+	 * The number of (original) vertices of the geometry
+	 * 
+	 * @return the numVertices
+	 */
+	public int getNumVertices() {
+		return numOrigVertices;
+	}
+
+	public float[][] getVertices() {
+		return vertices;
+	}
+
+	/**
+	 * @return If the data is 2D data
+	 */
+	public boolean is2D() {
+		return is2D;
+	}
+
+	/**
+	 * Loads the model geometry from the geometry files.
+	 * 
+	 * So far those comprise a nodes.bin file for the geometry vertices and a faces.bin containing the faces and their
+	 * three edge vertex numbers.
+	 */
+	private void loadGeometry(AModelManager m) throws IOException {
+
+		MathObjectReader mr = new MathObjectReader();
+		originalVertices = mr.readRawFloatVector(m.getInStream("vertices.bin"));
+		Log.d("GeoData", "Loaded " + originalVertices.length + " vertex values");
+
+		/*
+		 * Assume the vector to contain 3D data. If we have 2D data, we insert zeros at every 3rd position!
+		 */
+		is2D = false;
+		if ("2".equals(m.getModelXMLTagValue("geometry.dimension"))) {
+			is2D = true;
+			float[] tmpnode = new float[originalVertices.length + originalVertices.length / 2];
+			for (int i = 0; i < originalVertices.length / 2; i++) {
+				tmpnode[3 * i] = originalVertices[2 * i];
+				tmpnode[3 * i + 1] = originalVertices[2 * i + 1];
+				tmpnode[3 * i + 2] = 0;
+			}
+			originalVertices = tmpnode;
+			tmpnode = null;
+			Log.d("GeoData", "2D geometry - extending vertex data to 3rd dimension (zeros) to total number of "
+					+ originalVertices.length + " values");
+		}
+		// Three coordinates per node
+		numOrigVertices = originalVertices.length / 3;
+		Log.d("GeoData", "Loaded " + numOrigVertices + " vertices");
+		// Only one transformation function for JRB models if any
+		vertexLTFuncNr = new int[numOrigVertices];
+
+		faces = null;
+		if (m.modelFileExists("faces.bin") // check included for backwards
+											// compatibility.
+				|| m.xmlTagExists("geometry.hasFaces")
+				&& Boolean.parseBoolean(m.getModelXMLTagValue("geometry.hasFaces"))) {
+			faces = mr.readRawShortVector(m.getInStream("faces.bin"));
+			// Subtract the indices, as the nodes are addressed with zero offset
+			// inside java arrays
+			for (int i = 0; i < faces.length; i++) {
+				faces[i] -= 1;
+			}
+			// Three edges per face
+			numFaces = faces.length / 3;
+			Log.d("GeoData", "Loaded " + numFaces + " faces");
+			domain_of_face = new int[numFaces];
+		}
+
+		edges = null;
+		if (m.modelFileExists("edges.bin")) {
+			edges = mr.readRawShortVector(m.getInStream("edges.bin"));
+		}
+
+		// dir_nodes = null;
+		// if (m.modelFileExists("dir_nodes.bin")) {
+		// dir_nodes = mr.readRawShortVector(m.getInStream("dir_nodes.bin"));
+		// }
 	}
 
 	/**
@@ -275,8 +395,7 @@ public class GeometryData extends Object {
 	}
 
 	/**
-	 * Old geometry loading method, using the geometry.dat file which is to
-	 * parse! (slow)
+	 * Old geometry loading method, using the geometry.dat file which is to parse! (slow)
 	 * 
 	 * @param tokens
 	 * @throws IOException
@@ -322,9 +441,8 @@ public class GeometryData extends Object {
 			count += 3;
 		}
 		/**
-		 * Read in the number of the transformation function for each vertex
-		 * (effectively modeling different functions for different geometry
-		 * domains)
+		 * Read in the number of the transformation function for each vertex (effectively modeling different functions
+		 * for different geometry domains)
 		 */
 		vertexLTFuncNr = new int[numOrigVertices];
 		for (int i = 0; i < numOrigVertices; i++) {
@@ -338,139 +456,6 @@ public class GeometryData extends Object {
 		}
 		// No edges for rbappmit-models (new feature)
 		edges = null;
-	}
-
-	/**
-	 * Loads the model geometry from the geometry files. So far those comprise a
-	 * nodes.bin file for the geometry vertices and a faces.bin containing the
-	 * faces and their three edge vertex numbers.
-	 */
-	private void loadGeometry(AModelManager m) throws IOException {
-
-		MathObjectReader mr = new MathObjectReader();
-		originalVertices = mr.readRawFloatVector(m.getInStream("vertices.bin"));
-		Log.d("GeoData", "Loaded " + originalVertices.length + " vertex values");
-
-		/*
-		 * Assume the vector to contain 3D data. If we have 2D data, we insert
-		 * zeros at every 3rd position!
-		 */
-		is2D = false;
-		if ("2".equals(m.getModelXMLTagValue("geometry.dimension"))) {
-			is2D = true;
-			float[] tmpnode = new float[originalVertices.length + originalVertices.length / 2];
-			for (int i = 0; i < originalVertices.length / 2; i++) {
-				tmpnode[3 * i] = originalVertices[2 * i];
-				tmpnode[3 * i + 1] = originalVertices[2 * i + 1];
-				tmpnode[3 * i + 2] = 0;
-			}
-			originalVertices = tmpnode;
-			tmpnode = null;
-			Log.d("GeoData", "2D geometry - extending vertex data to 3rd dimension (zeros) to total number of "
-					+ originalVertices.length + " values");
-		}
-		// Three coordinates per node
-		numOrigVertices = originalVertices.length / 3;
-		Log.d("GeoData", "Loaded " + numOrigVertices + " vertices");
-		// Only one transformation function for JRB models if any
-		vertexLTFuncNr = new int[numOrigVertices];
-
-		faces = null;
-		if (m.modelFileExists("faces.bin") // check included for backwards
-											// compatibility.
-				|| m.xmlTagExists("geometry.hasFaces")
-				&& Boolean.parseBoolean(m.getModelXMLTagValue("geometry.hasFaces"))) {
-			faces = mr.readRawShortVector(m.getInStream("faces.bin"));
-			// Subtract the indices, as the nodes are addressed with zero offset
-			// inside java arrays
-			for (int i = 0; i < faces.length; i++) {
-				faces[i] -= 1;
-			}
-			// Three edges per face
-			numFaces = faces.length / 3;
-			Log.d("GeoData", "Loaded " + numFaces + " faces");
-			domain_of_face = new int[numFaces];
-		}
-
-		edges = null;
-		if (m.modelFileExists("edges.bin")) {
-			edges = mr.readRawShortVector(m.getInStream("edges.bin"));
-		}
-
-		if (m.modelFileExists("dir_nodes.bin")) {
-			edges = mr.readRawShortVector(m.getInStream("edges.bin"));
-		}
-
-		// Read discretization type
-		// fieldMap =
-		// FieldMapping.parse(m.getModelXMLTagValue("geometry.fieldmapping"));
-	}
-
-	/**
-	 * Sets the displacement data for this geometry according to the
-	 * DisplacementField provided.
-	 * 
-	 * @param d
-	 *            The displacement field
-	 * 
-	 *            TODO scaling automatically
-	 * @return The number of vertex sets with different displacements available
-	 */
-	public void addDisplacements(DisplacementField d, int parts) {
-		// if (fieldMap != FieldMapping.VERTEX) {
-		// throw new
-		// RuntimeException("Displacements not possible for non-vertex based field mapping");
-		// }
-
-		float scaling = 1f;// (d.getMax() - d.getMin()) / boxsize;
-		Log.d("GeoData", "Adding displacements from " + d.descriptor + ", numVertices=" + numOrigVertices
-				+ ", vertices field length=" + vertices.length + ", displacement field size=" + d.getSize() + " (x3="
-				+ d.getSize() * 3 + "), parts=" + parts);
-		for (int vset = 0; vset < parts; vset++) {
-			for (int nodenr = 0; nodenr < numOrigVertices; nodenr++) {
-				int idx = vset * numOrigVertices + nodenr;
-				vertices[vset][3 * nodenr] += d.getXDisplacements()[idx] / scaling;
-				vertices[vset][3 * nodenr + 1] += d.getYDisplacements()[idx] / scaling;
-				vertices[vset][3 * nodenr + 2] += d.getZDisplacements()[idx] / scaling;
-			}
-		}
-		compute3DNormalData();
-		centerModelGeometry();
-	}
-
-	/**
-	 * @return If the data is 2D data
-	 */
-	public boolean is2D() {
-		return is2D;
-	}
-
-	/**
-	 * Transforms the original vertices by all given MeshTransforms in the list
-	 * and concatenates the results in a large vertices array.
-	 * 
-	 * @param transforms
-	 */
-	public void createMesh(List<MeshTransform> transforms, boolean update) {
-		vertices = new float[transforms.size()][];
-		int cnt = 0;
-		// Log.d("GeoData", "Original   : " + Log.subArr(originalVertices,100));
-		for (MeshTransform m : transforms) {
-			vertices[cnt++] = m.transformMesh(originalVertices);
-			// Log.d("GeoData", "Transform "+cnt+": " +
-			// Log.subArr(vertices[cnt-1],100)+" ("+m.getClass().getName()+")");
-			// float[] diff = new float[200];
-			// for (int i=0; i < 200;i++) {
-			// diff[i] = originalVertices[i] - vertices[cnt-1][i];
-			// }
-			// Log.d("GeoData", "Diff "+cnt+": " + Log.subArr(diff,200));
-		}
-		if (update) {
-			if (!is2D) {
-				compute3DNormalData();
-			}
-			centerModelGeometry();
-		}
 	}
 
 	// /**

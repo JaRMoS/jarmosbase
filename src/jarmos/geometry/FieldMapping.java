@@ -1,10 +1,9 @@
-/**
- * Created on Aug 29, 2011 in Project JRMCommons
- * Location: jarmos.geometry.DiscretizationType.java
- */
 package jarmos.geometry;
 
 /**
+ * The field mapping determines how the DoF of the solution are mapped into the given geometry. This is made for
+ * different discretization schemes like FEM or FV, where values on either the nodes/vertices or elements are computed.
+ * 
  * @author Daniel Wirtz
  * @date Aug 30, 2011
  * 
@@ -12,16 +11,16 @@ package jarmos.geometry;
 public enum FieldMapping {
 
 	/**
-	 * The field variables are to be mapped to geometry vertices, e.g. if
-	 * the model is discretized using finite element methods.
+	 * The field variables are to be mapped to geometry vertices, e.g. if the model is discretized using finite element
+	 * methods.
 	 * 
 	 * The field solution values are values on nodes/vertices.
 	 */
 	VERTEX,
 
 	/**
-	 * The field variables are to be mapped to geometry elements, e.g. if
-	 * the model is discretized using finite volume methods.
+	 * The field variables are to be mapped to geometry elements, e.g. if the model is discretized using finite volume
+	 * methods.
 	 * 
 	 * The field solution values are mean values on faces.
 	 */

@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos.test;
 
 import static org.junit.Assert.assertTrue;
@@ -13,10 +10,9 @@ import org.apache.commons.math.linear.RealMatrix;
 import org.apache.commons.math.linear.RealVector;
 import org.junit.Test;
 
-
 /**
- * @author dwirtz
- *
+ * @author Daniel Wirtz @date 2013-08-07
+ * 
  */
 public class MathObjectReaderTest {
 
@@ -25,44 +21,46 @@ public class MathObjectReaderTest {
 	 */
 	@Test
 	public void testReadMatrixString() {
-		
-//		FileModelManager f = new FileModelManager(new File(".").getAbsolutePath());
-//		try {
-//			f.setModelDir("test");
-//		} catch (ModelManagerException e1) {
-//			fail(e1.getMessage());
-//			e1.printStackTrace();
-//		}
-//		f.fileExists("test.bin");
-		
+
+		// FileModelManager f = new FileModelManager(new File(".").getAbsolutePath());
+		// try {
+		// f.setModelDir("test");
+		// } catch (ModelManagerException e1) {
+		// fail(e1.getMessage());
+		// e1.printStackTrace();
+		// }
+		// f.fileExists("test.bin");
+
 		MathObjectReader rd = new MathObjectReader();
-		
+
 		RealMatrix m = null;
 		try {
 			m = rd.readMatrix("./test/test.bin");
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}
-		
-		RealMatrix truth = MathFactory.createRealMatrix(new double[][]{new double[]{.5, 1.5}, new double[]{2.0, 1.0}});
+
+		RealMatrix truth = MathFactory.createRealMatrix(new double[][] { new double[] { .5, 1.5 },
+				new double[] { 2.0, 1.0 } });
 		assertTrue(truth.equals(m));
-		
+
 		try {
 			m = rd.readMatrix("./test/test2.bin");
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}
-		truth = MathFactory.createRealMatrix(new double[][]{new double[]{0, -.5, 3}, new double[]{13516.23425666, -13513.336, 100.000001}});
+		truth = MathFactory.createRealMatrix(new double[][] { new double[] { 0, -.5, 3 },
+				new double[] { 13516.23425666, -13513.336, 100.000001 } });
 		assertTrue(truth.equals(m));
 	}
-	
+
 	/**
 	 * Test method for {@link jarmos.io.MathObjectReader#readVector(java.lang.String)}.
 	 */
 	@Test
 	public void testReadVectorString() {
 		MathObjectReader rd = new MathObjectReader();
-		
+
 		RealVector v = null;
 		try {
 			v = rd.readVector("./test/testvec.bin");

@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos.geometry;
 
 import jarmos.FieldDescriptor;
@@ -9,7 +6,11 @@ import jarmos.visual.ColorGenerator;
 import jarmos.visual.VisualFeature;
 
 /**
- * @author CreaByte
+ * The displacement field is a logical solution field describing displacements of geometry nodes/vertices as a solution
+ * to the given problem. The displacement data is always kept in 3D, however, 2D displacements are realized using zero
+ * values for the third axis.
+ * 
+ * @author Daniel Wirtz
  * 
  */
 public class DisplacementField extends LogicSolutionField {

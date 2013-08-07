@@ -1,18 +1,17 @@
-/**
- * 
- */
 package jarmos.visual;
 
 /**
- * Extracted the Camera class from GLRenderer
+ * Extracted the Camera class from GLRenderer. Used in OpenGL rendering of model geometries.
  * 
- * @author CreaByte
+ * The original camera code was taken from rbappmit, whose copyright applies here.
+ * 
+ * @author Daniel Wirtz
  * 
  */
 public class Camera {
 
 	private float[] M = new float[16]; // resulted rotation matrix
-	
+
 	// View position, focus points and view, up and right vectors
 	// view vector pointing from view position to the focus point
 	// up vector perpendicular to the view vector and current horizontal
@@ -32,7 +31,7 @@ public class Camera {
 												// to the the up and view
 												// vectors
 	}
-	
+
 	public float[] getRotationMatrix() {
 		return M;
 	}

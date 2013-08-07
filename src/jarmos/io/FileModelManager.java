@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos.io;
 
 import java.io.File;
@@ -24,12 +21,12 @@ import java.net.URLClassLoader;
  * 
  */
 public class FileModelManager extends AModelManager {
-	
-	//public static final String MODEL_DIR = "C:\\Users\\CreaByte\\Documents\\Uni\\Software\\JaRMoS\\JaRMoSModels";
+
+	// public static final String MODEL_DIR = "C:\\Users\\CreaByte\\Documents\\Uni\\Software\\JaRMoS\\JaRMoSModels";
 	public static final String MODEL_DIR = "/home/dwirtz/aghhome/Software/Eclipse/JaRMoS/JaRMoSModels";
 
 	private String root;
-	
+
 	/**
 	 * Calls the constructor with the FileModelManager.MODEL_DIR static string as root.
 	 */
@@ -44,8 +41,7 @@ public class FileModelManager extends AModelManager {
 		super();
 		File r = new File(root);
 		if (!r.exists()) {
-			throw new IllegalArgumentException("Directory does not exist: '"
-					+ root + "'");
+			throw new IllegalArgumentException("Directory does not exist: '" + root + "'");
 		}
 		this.root = root;
 	}
@@ -56,13 +52,11 @@ public class FileModelManager extends AModelManager {
 	@Override
 	public ClassLoader getClassLoader() {
 		try {
-			URL url = new File(root + "/" + getModelDir() + "/"
-					+ CLASSES_JARFILE).toURI().toURL();
+			URL url = new File(root + "/" + getModelDir() + "/" + CLASSES_JARFILE).toURI().toURL();
 			return new URLClassLoader(new URL[] { url }, super.getClassLoader());
 		} catch (MalformedURLException e) {
-			throw new RuntimeException("Creating a file with path '" + root
-					+ "/" + getModelDir() + "/" + CLASSES_JARFILE
-					+ "' caused a MalformedURLException.", e);
+			throw new RuntimeException("Creating a file with path '" + root + "/" + getModelDir() + "/"
+					+ CLASSES_JARFILE + "' caused a MalformedURLException.", e);
 		}
 	}
 
@@ -72,8 +66,7 @@ public class FileModelManager extends AModelManager {
 	 * @see kermor.java.io.IModelManager#getInStream(java.lang.String)
 	 */
 	@Override
-	protected InputStream getInStreamImpl(String filename)
-			throws FileNotFoundException {
+	protected InputStream getInStreamImpl(String filename) throws FileNotFoundException {
 		return new FileInputStream(getFullModelPath() + filename);
 	}
 
@@ -91,8 +84,7 @@ public class FileModelManager extends AModelManager {
 	 */
 	@Override
 	public boolean modelFileExists(String filename) {
-		return new File(root + File.separator + getModelDir() + File.separator
-				+ filename).exists();
+		return new File(root + File.separator + getModelDir() + File.separator + filename).exists();
 	}
 
 	protected String getFullModelPath() {
@@ -100,17 +92,15 @@ public class FileModelManager extends AModelManager {
 	}
 
 	/**
-	 * Writes the given inputstream to the file specified by filename to the
-	 * current model directory.
+	 * Writes the given inputstream to the file specified by filename to the current model directory.
 	 * 
 	 * @param filename
-	 *            The file name
+	 * The file name
 	 * @param in
-	 *            The inputstream to read
+	 * The inputstream to read
 	 * @throws IOException
 	 */
-	public void writeModelFile(String filename, InputStream in)
-			throws IOException {
+	public void writeModelFile(String filename, InputStream in) throws IOException {
 		File file = new File(getFullModelPath() + filename);
 		// Delete if file exists
 		if (file.exists())
@@ -124,29 +114,29 @@ public class FileModelManager extends AModelManager {
 		}
 		in.close();
 	}
-	
+
 	/**
-	 * Removes  
+	 * Removes
+	 * 
 	 * @param dirname
 	 */
 	public boolean clearCurrentModel() {
 		return deleteDir(new File(getFullModelPath()));
 	}
-	
-	private boolean deleteDir(File dir) {
-	    if (dir.isDirectory()) {
-	        String[] children = dir.list();
-	        for (int i=0; i<children.length; i++) {
-	            boolean success = deleteDir(new File(dir, children[i]));
-	            if (!success) {
-	                return false;
-	            }
-	        }
-	    }
-	    // The directory is now empty so delete it
-	    return dir.delete();
-	}
 
+	private boolean deleteDir(File dir) {
+		if (dir.isDirectory()) {
+			String[] children = dir.list();
+			for (int i = 0; i < children.length; i++) {
+				boolean success = deleteDir(new File(dir, children[i]));
+				if (!success) {
+					return false;
+				}
+			}
+		}
+		// The directory is now empty so delete it
+		return dir.delete();
+	}
 
 	/**
 	 * Returns the root folder for the model directories

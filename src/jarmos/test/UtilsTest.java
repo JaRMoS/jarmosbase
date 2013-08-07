@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos.test;
 
 import static org.junit.Assert.fail;
@@ -11,10 +8,9 @@ import java.util.Arrays;
 
 import org.junit.Test;
 
-
 /**
- * @author Ernst
- *
+ * @author Daniel Wirtz @date 2013-08-07
+ * 
  */
 public class UtilsTest {
 
@@ -23,11 +19,11 @@ public class UtilsTest {
 	 */
 	@Test
 	public void testLinspace() {
-//		double a = 0;
-//		double b = 10;
-//		double[] s = Util.linspace(a, b, 10);
-//		
-//		fail("Not yet implemented");
+		// double a = 0;
+		// double b = 10;
+		// double[] s = Util.linspace(a, b, 10);
+		//
+		// fail("Not yet implemented");
 	}
 
 	/**
@@ -37,11 +33,11 @@ public class UtilsTest {
 	public void testRange() {
 		fail("Not yet implemented");
 	}
-	
+
 	@Test
 	public void testColorGen() {
 		int s = 1000;
 		ColorGenerator cg = new ColorGenerator();
-		Log.d("VisData","Default colors of size "+s+": "+Arrays.toString(cg.getDefaultColor(s)));
-	} 
+		Log.d("VisData", "Default colors of size " + s + ": " + Arrays.toString(cg.getDefaultColor(s)));
+	}
 }

@@ -1,18 +1,17 @@
-/**
- * 
- */
 package jarmos.geometry;
 
 /**
+ * Default mesh transformation.
  * 
- * Simply copies the vertices as-is 
+ * Simply copies the vertices as-is.
  * 
- * @author CreaByte
- *
+ * @author Daniel Wirtz
+ * 
  */
 public class DefaultTransform implements MeshTransform {
 
-	/** (non-Javadoc)
+	/**
+	 * 
 	 * @see jarmos.geometry.MeshTransform#transformMesh(float[])
 	 */
 	@Override

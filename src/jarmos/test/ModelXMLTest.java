@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos.test;
 
 import static org.junit.Assert.assertTrue;
@@ -16,8 +13,8 @@ import javax.xml.validation.SchemaFactory;
 import org.junit.Test;
 
 /**
- * @author CreaByte
- *
+ * @author Daniel Wirtz
+ * 
  */
 public class ModelXMLTest {
 

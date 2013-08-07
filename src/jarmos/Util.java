@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos;
 
 import java.util.Arrays;
@@ -10,7 +7,9 @@ import org.apache.commons.math.linear.RealMatrix;
 import org.apache.commons.math.linear.RealVector;
 
 /**
- * @author Ernst
+ * @short Utility functions.
+ * 
+ * @author Daniel Wirtz @date 2013-08-07
  * 
  */
 public class Util {
@@ -35,12 +34,13 @@ public class Util {
 	 * @return
 	 */
 	public static double[] range(double a, double step, double b) {
-//		int num = (int) Math.ceil((b - a) / step);
-		if (a > b) return null;
+		// int num = (int) Math.ceil((b - a) / step);
+		if (a > b)
+			return null;
 		int num = 1;
-		double hlp = a+step;
+		double hlp = a + step;
 		while (hlp <= b) {
-			hlp+=step;
+			hlp += step;
 			num++;
 		}
 		double[] res = new double[num];
@@ -49,7 +49,7 @@ public class Util {
 		}
 		return res;
 	}
-	
+
 	public static void vecAdd(double[] to, double[] what) {
 		for (int i = 0; i < to.length; i++) {
 			to[i] += what[i];
@@ -73,18 +73,19 @@ public class Util {
 		}
 		return res;
 	}
-	
+
 	public static String realMatToString(RealMatrix r) {
-		String res = "RealMatrix("+r.getRowDimension()+"x"+r.getColumnDimension()+") of type '"+r.getClass().getName()+"'\n";
-		for (int i=0;i<r.getRowDimension();i++) {
-			res += Arrays.toString(r.getRow(i))+"\n";
+		String res = "RealMatrix(" + r.getRowDimension() + "x" + r.getColumnDimension() + ") of type '"
+				+ r.getClass().getName() + "'\n";
+		for (int i = 0; i < r.getRowDimension(); i++) {
+			res += Arrays.toString(r.getRow(i)) + "\n";
 		}
 		return res;
 	}
-	
+
 	public static String realVecToString(RealVector r) {
-		String res = "RealVector("+r.getDimension()+") of type '"+r.getClass().getName()+"'\n";
-		return res += Arrays.toString(r.getData())+"\n";
+		String res = "RealVector(" + r.getDimension() + ") of type '" + r.getClass().getName() + "'\n";
+		return res += Arrays.toString(r.getData()) + "\n";
 	}
-	
+
 }

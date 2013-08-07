@@ -1,12 +1,14 @@
-/**
- * 
- */
 package jarmos;
 
 import jarmos.geometry.FieldMapping;
 
 /**
- * @author CreaByte
+ * @short Contains information about the logical solution fields.
+ * 
+ * Those information comprises of the SolutionFieldType (real / complex / displacement), the geometrical
+ * geometry.FieldMapping for allocation of values to vertices or elements and a descriptive #toString method.
+ * 
+ * @author Daniel Wirtz
  * 
  */
 public class FieldDescriptor {

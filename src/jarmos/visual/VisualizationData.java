@@ -14,7 +14,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-
+/**
+ * A container class for all model visual data.
+ * 
+ * This includes geometry, the simulation results and visual features to display on that geometry. The simulation
+ * results are used to compute displacements (if given) and all included visual features.
+ * 
+ * @author Daniel Wirtz @date 2013-08-07
+ * 
+ */
 public class VisualizationData {
 
 	/**
@@ -28,8 +36,7 @@ public class VisualizationData {
 	public static final int FLOAT_MAX = 1000000;
 
 	/**
-	 * Allocates short and float buffers for the rendering process and sets the
-	 * position to zero.
+	 * Allocates short and float buffers for the rendering process and sets the position to zero.
 	 * 
 	 */
 	public static FloatBuffer createFloatBuffer(int size) {
@@ -49,8 +56,7 @@ public class VisualizationData {
 	}
 
 	/**
-	 * Allocates short and float buffers for the rendering process and sets the
-	 * position to zero.
+	 * Allocates short and float buffers for the rendering process and sets the position to zero.
 	 * 
 	 */
 	public static ShortBuffer createShortBuffer(int size) {
@@ -124,8 +130,8 @@ public class VisualizationData {
 
 		for (LogicSolutionField f : res.getLogicFields()) {
 			/**
-			 * Apply displacements to geometry for displacement fields (if there
-			 * should be more than one they are simply applied both)
+			 * Apply displacements to geometry for displacement fields (if there should be more than one they are simply
+			 * applied both)
 			 */
 			if (f instanceof DisplacementField) {
 				gData.addDisplacements((DisplacementField) f, res.getNumParts());
@@ -147,13 +153,13 @@ public class VisualizationData {
 	// }
 
 	/**
-	 * calculate the color data (red green blue alpha) from the solution field
-	 * TODO: enable different colormaps via model.xml (i.e. matlab's color maps)
+	 * calculate the color data (red green blue alpha) from the solution field TODO: enable different colormaps via
+	 * model.xml (i.e. matlab's color maps)
 	 * 
 	 * @param cg
-	 *            The color generator
+	 * The color generator
 	 * 
-	 *            TODO create fieldColorName list and display in plot
+	 * TODO create fieldColorName list and display in plot
 	 */
 	public void computeVisualFeatures(ColorGenerator cg) {
 		// Clear old colors
@@ -161,7 +167,8 @@ public class VisualizationData {
 		if (simres.getLogicFields() != null) {
 			// For displacement-only we add an default-color field
 			if (simres.hasDisplacements() && simres.getNumValueFields() == 1) {
-				visFeatures.add(new VisualFeature("Displacements", cg.getDefaultColor(gData.getNumVertices() * simres.getNumParts()), null));
+				visFeatures.add(new VisualFeature("Displacements", cg.getDefaultColor(gData.getNumVertices()
+						* simres.getNumParts()), null));
 			}
 			for (int fieldNr = 0; fieldNr < simres.getLogicFields().size(); fieldNr++) {
 				LogicSolutionField f = simres.getLogicFields().get(fieldNr);
@@ -172,14 +179,12 @@ public class VisualizationData {
 							cg.getDefaultColor(f.getSize()), f));
 				} else {
 					/*
-					 * Check if the colors have to be mapped from element to
-					 * vertex values
+					 * Check if the colors have to be mapped from element to vertex values
 					 */
 					Log.d("VisData",
 							"Computing visual features for logical field '" + f.descriptor + "' of size " + f.getSize());
 					/*
-					 * Decide which feature to present/compute depending on
-					 * logical field
+					 * Decide which feature to present/compute depending on logical field
 					 */
 					for (VisualFeature vf : f.getVisualFeatures(cg)) {
 						visFeatures.add(vf);

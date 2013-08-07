@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos;
 
 import jarmos.geometry.FieldMapping;
@@ -8,10 +5,20 @@ import jarmos.visual.ColorGenerator;
 import jarmos.visual.VisualFeature;
 
 /**
- * @author CreaByte
+ * @short The default solution field containing an array of real values.
+ * 
+ * Also provides a convenience static member to obtain a zero solution field.
+ * @author Daniel Wirtz
  * 
  */
 public class DefaultSolutionField extends LogicSolutionField {
+
+	public static LogicSolutionField getZeroField(int size, FieldMapping mapping) {
+		FieldDescriptor f = new FieldDescriptor(SolutionFieldType.RealValue);
+		f.Name = "All-Zero real field";
+		f.Mapping = mapping;
+		return new DefaultSolutionField(f, size);
+	}
 
 	private float[] values;
 
@@ -29,8 +36,7 @@ public class DefaultSolutionField extends LogicSolutionField {
 	}
 
 	/**
-	 * Compatibility constructor. Takes a float array and performs insertions
-	 * for all values.
+	 * Compatibility constructor. Takes a float array and performs insertions for all values.
 	 * 
 	 * @param values
 	 */
@@ -47,12 +53,7 @@ public class DefaultSolutionField extends LogicSolutionField {
 			min = value;
 		if (max < value)
 			max = value;
-		// norms[index] = Math.abs(value);
 	}
-
-//	public float[] getDoFs() {
-//		return values;
-//	}
 
 	public float getMax() {
 		return max;
@@ -64,13 +65,6 @@ public class DefaultSolutionField extends LogicSolutionField {
 
 	public boolean isConstant() {
 		return Math.abs(min - max) < 1e-8;
-	}
-
-	public static LogicSolutionField getZeroField(int size, FieldMapping mapping) {
-		FieldDescriptor f = new FieldDescriptor(SolutionFieldType.RealValue);
-		f.Name = "All-Zero real field";
-		f.Mapping = mapping;
-		return new DefaultSolutionField(f, size);
 	}
 
 	@Override

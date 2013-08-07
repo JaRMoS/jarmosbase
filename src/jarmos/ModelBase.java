@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos;
 
 import jarmos.geometry.GeometryData;
@@ -10,13 +7,12 @@ import jarmos.io.MathObjectReader.MathReaderException;
 
 import java.io.IOException;
 
-
 /**
- * Base class for all JRMCommons models.
+ * @short Base class for all JaRMoSBase models.
  * 
- * @author CreaByte
+ * Contains geometry data, the total number of DoF and methods to load the offline data.
  * 
- *         TODO think about more common properties and methods
+ * @author Daniel Wirtz
  * 
  */
 public abstract class ModelBase {
@@ -24,9 +20,8 @@ public abstract class ModelBase {
 	private GeometryData geoData = null;
 
 	/**
-	 * The logical output fields of the model, each collecting one ore more
-	 * model DoF's into a related unit, like displacements which have 2-3
-	 * DoF-fields (x,y,z)
+	 * The logical output fields of the model, each collecting one ore more model DoF's into a related unit, like
+	 * displacements which have 2-3 DoF-fields (x,y,z)
 	 */
 	protected FieldDescriptor[] logicalFieldTypes;
 
@@ -37,10 +32,8 @@ public abstract class ModelBase {
 	 * 
 	 * Override in subclasses for model-specific offline data loading
 	 * 
-	 * TODO remove if (dofs == null) check as this will be ensured by the model.xsd-validation file.
-	 * 
 	 * @param m
-	 *            The model manager
+	 * The model manager
 	 * @throws IOException
 	 */
 	public void loadOfflineData(AModelManager m) throws MathReaderException, ModelManagerException, IOException {
@@ -54,7 +47,6 @@ public abstract class ModelBase {
 		 * Read number of DoF-fields
 		 */
 		String dofs = m.getModelXMLTagValue("numDoFfields");
-		if (dofs == null) throw new RuntimeException("No numDoFfields tag found");
 		numDoFfields = Integer.parseInt(dofs);
 
 		/*
@@ -79,8 +71,7 @@ public abstract class ModelBase {
 	}
 
 	/**
-	 * Returns the number of degree-of-freedom fields generated/computed by the
-	 * model
+	 * Returns the number of degree-of-freedom fields generated/computed by the model
 	 * 
 	 * @return
 	 */

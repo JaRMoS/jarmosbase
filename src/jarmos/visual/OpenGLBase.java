@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos.visual;
 
 import jarmos.Log;
@@ -9,16 +6,20 @@ import jarmos.geometry.GeometryData;
 
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
-import java.util.Arrays;
 
 /**
- * @author CreaByte
+ * 
+ * Base class for OpenGL visualisation. Provides methods to access different geometry data and is used within the
+ * GLRenderer class of the JaRMoSA android app and the JOGLRenderer of JaRMoSPC.
+ * 
+ * @author Daniel Wirtz
  * 
  */
 public class OpenGLBase {
 
 	public enum Orientation {
-		LANDSCAPE, PORTRAIT;
+		LANDSCAPE,
+		PORTRAIT;
 	}
 
 	public static final float FRAME_INCREASE = 0.01f;
@@ -47,26 +48,25 @@ public class OpenGLBase {
 	 * Offset for the node data in float buffer
 	 */
 	private int[] _vertex_off;
-	
+
 	// Camera control
 	private Camera camera;
-	
+
 	private Orientation orientation = Orientation.LANDSCAPE;
-	
+
 	/**
 	 * The currently plotted color field
 	 */
 	private int currentColorField = 0;
-	
+
 	private int currentFrame = 0;
 
 	private float currentFramef = 0f;
-	
+
 	protected FloatBuffer floatBuf;
 
 	/**
-	 * Flag that indicates whether the object rotates continuously in the 3D
-	 * case
+	 * Flag that indicates whether the object rotates continuously in the 3D case
 	 */
 	public boolean isContinuousRotation = true;
 
@@ -78,24 +78,25 @@ public class OpenGLBase {
 	private boolean ispaused = false;
 
 	private String[] names;
-	
+
 	private float pos[] = null;
-	
+
 	/**
 	 * scaling ratio (for zooming)
 	 */
 	private float scaleFactor = 1.0f;
-	
+
 	private float[] orthoproj = null;
 
 	protected ShortBuffer shortBuf;
 
 	private VisualizationData vData;
 
-	private int w,h;
-	
+	private int w, h;
+
 	/**
 	 * Creates an OpenGLBase with the default size.
+	 * 
 	 * @param vData
 	 */
 	public OpenGLBase(VisualizationData vData) {
@@ -109,28 +110,28 @@ public class OpenGLBase {
 		shortBuf = vData.getShortBuffer();
 		setSize(width, height);
 	}
-	
+
 	public void setSize(int width, int height) {
 		w = width;
 		h = height;
 		updateOrthographicProjection();
-		//Log.d("OpenGLBase", "set size: w"+width+" h"+height);
+		// Log.d("OpenGLBase", "set size: w"+width+" h"+height);
 	}
 
 	/**
-	 * Sets the initial position away from the model in the y-direction looking
-	 * toward the center of the model (0,0,0) horizontally
+	 * Sets the initial position away from the model in the y-direction looking toward the center of the model (0,0,0)
+	 * horizontally
 	 */
 	public void resetView() {
 		camera = new Camera(0f, -getBoxSize(), 0f, 0f, 1f, 0f, 0f, 0f, 1f);
-		pos = new float[]{ 0f, 0f };
+		pos = new float[] { 0f, 0f };
 		scaleFactor = 1.0f;
 		isFrontFace = true;
-		//Log.d("OpenGLBase", "reset view!");
+		// Log.d("OpenGLBase", "reset view!");
 	}
-	
+
 	private void updateOrthographicProjection() {
-		float exrat, ax=0, ay=0; // marginal extension ratio
+		float exrat, ax = 0, ay = 0; // marginal extension ratio
 		if (is2D())
 			exrat = 0.65f * getBoxSize();
 		else
@@ -138,16 +139,16 @@ public class OpenGLBase {
 		switch (orientation) {
 		case PORTRAIT:
 			ax = 1.0f;
-			ay = (float)w / (float)h;
+			ay = (float) w / (float) h;
 			break;
-		case LANDSCAPE:			
-			ax = (float)h / (float)w;
+		case LANDSCAPE:
+			ax = (float) h / (float) w;
 			ay = 1.0f;
 		}
 		orthoproj = new float[] { -exrat / ax, exrat / ax, -exrat / ay, exrat / ay, -100, 100 };
-		//Log.d("OpenGLBase", "OrthProj update: "+Arrays.toString(orthoproj));
+		// Log.d("OpenGLBase", "OrthProj update: "+Arrays.toString(orthoproj));
 	}
-	
+
 	/**
 	 * @param posx
 	 * @param posy
@@ -158,13 +159,12 @@ public class OpenGLBase {
 	}
 
 	/*
-	 * Conversion method for FV discretized field variables who give solution
-	 * values on faces rather than nodes.
+	 * Conversion method for FV discretized field variables who give solution values on faces rather than nodes.
 	 * 
 	 * Computes the node color as mean of all adjacent face colors.
 	 * 
-	 * TODO move this algorithm to ROMSim, as other visualization libraries
-	 * might be able to directly set colors for faces.
+	 * TODO move this algorithm to ROMSim, as other visualization libraries might be able to directly set colors for
+	 * faces.
 	 */
 	private float[] elementToVertexColors(float[] faceCol) {
 		GeometryData gData = vData.getGeometryData();
@@ -241,12 +241,8 @@ public class OpenGLBase {
 			if (isContinuousRotation) {
 				float minrot = 0.16f / scaleFactor;
 				float sgnx = Math.signum(pos[0]), sgny = Math.signum(pos[1]);
-				pos[0] = sgnx
-						* Math.max(minrot,
-								Math.min(24.00f, sgnx * pos[0] * 0.95f));
-				pos[1] = sgny
-						* Math.max(minrot,
-								Math.min(24.00f, sgny * pos[1] * 0.95f));
+				pos[0] = sgnx * Math.max(minrot, Math.min(24.00f, sgnx * pos[0] * 0.95f));
+				pos[1] = sgny * Math.max(minrot, Math.min(24.00f, sgny * pos[1] * 0.95f));
 			}
 		}
 	}
@@ -294,7 +290,7 @@ public class OpenGLBase {
 	protected float[] getRotationMatrix() {
 		return camera.getRotationMatrix();
 	}
-	
+
 	protected float getScalingFactor() {
 		return scaleFactor;
 	}
@@ -316,8 +312,7 @@ public class OpenGLBase {
 	}
 
 	/**
-	 * Initializes the rendering process (Vertex, face, color and normal openGL
-	 * buffers)
+	 * Initializes the rendering process (Vertex, face, color and normal openGL buffers)
 	 * 
 	 * Fills the short/float buffers and records the offsets for certain parts.
 	 * 
@@ -343,8 +338,7 @@ public class OpenGLBase {
 		int curFloatBufOffset = 0;
 
 		/**
-		 * Node float buffer (also includes animations if displacements are
-		 * given)
+		 * Node float buffer (also includes animations if displacements are given)
 		 */
 		float[][] v = gData.getVertices();
 		_vertex_off = new int[v.length];
@@ -377,8 +371,7 @@ public class OpenGLBase {
 		/**
 		 * Colors for each visualization field.
 		 * 
-		 * Animation color buffer contains RBSystem.getVisualNumTimesteps()
-		 * times the color data for a single solution.
+		 * Animation color buffer contains RBSystem.getVisualNumTimesteps() times the color data for a single solution.
 		 */
 		_color_off = new int[vData.getNumVisFeatures()];
 		names = new String[_color_off.length];
@@ -413,9 +406,9 @@ public class OpenGLBase {
 		return vData.getGeometryData().is2D();
 	}
 
-//	public boolean isPaused() {
-//		return ispaused;
-//	}
+	// public boolean isPaused() {
+	// return ispaused;
+	// }
 
 	/**
 	 * Shows the next color field, if available.
@@ -426,13 +419,13 @@ public class OpenGLBase {
 		Log.d("OpenGLBase", "Next color field '" + names[currentColorField] + "' (" + (currentColorField + 1) + "/"
 				+ _color_off.length + ")");
 	}
-	
+
 	/**
 	 * Shows the next color field, if available.
 	 */
 	public void prevColorField() {
 		if (--currentColorField == -1)
-			currentColorField = vData.getNumVisFeatures()-1;
+			currentColorField = vData.getNumVisFeatures() - 1;
 		Log.d("OpenGLBase", "Previous color field '" + names[currentColorField] + "' (" + (currentColorField + 1) + "/"
 				+ _color_off.length + ")");
 	}
@@ -450,18 +443,18 @@ public class OpenGLBase {
 	 * @param pmode
 	 */
 	public void setOrientation(Orientation o) {
-		Log.d("OpenGLBase", "set orientation:"+o.toString());
+		Log.d("OpenGLBase", "set orientation:" + o.toString());
 		orientation = o;
 		updateOrthographicProjection();
 	}
 
-//	/**
-//	 * @param pzoom
-//	 */
-//	public void zoom(float pzoom) {
-//		pzoom = (pzoom < 1) ? 1 : pzoom;
-//		scaleFactor = pzoom;
-//	}
+	// /**
+	// * @param pzoom
+	// */
+	// public void zoom(float pzoom) {
+	// pzoom = (pzoom < 1) ? 1 : pzoom;
+	// scaleFactor = pzoom;
+	// }
 
 	/**
 	 * zoom in

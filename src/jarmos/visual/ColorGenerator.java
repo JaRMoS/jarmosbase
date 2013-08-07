@@ -1,11 +1,16 @@
-/**
- * Created on Aug 29, 2011 in Project JRMCommons
- * Location: jarmos.visual.ColorGenerator.java
- */
 package jarmos.visual;
 
-
 /**
+ * 
+ * The color generator is used to produce RGBA (RGB+Alpha) values from a given array of floats.
+ * 
+ * The resulting array is four times the size of the original array.
+ * 
+ * For coloring, any given ColorMap instance is used to obtain suitable coloring. If none is given, the
+ * #getDefaultColors method can be used.
+ * 
+ * @note Thus far only the original colormap from rbappmit is included here without using the ColorMap enum.
+ * 
  * @author Daniel Wirtz
  * @date Aug 29, 2011
  * 
@@ -23,8 +28,7 @@ public class ColorGenerator {
 	public float alphaValue = 0.8f;
 
 	/**
-	 * Returns an array with "size" default colors (effectively 4*size RGBT
-	 * values)
+	 * Returns an array with "size" default colors (effectively 4*size RGBT values)
 	 * 
 	 * @param size
 	 * @return
@@ -41,8 +45,7 @@ public class ColorGenerator {
 	}
 
 	/**
-	 * Computes a 4-tuple color array with values R, G, B, Alpha for the given
-	 * field values.
+	 * Computes a 4-tuple color array with values R, G, B, Alpha for the given field values.
 	 * 
 	 * @param fieldValues
 	 * @return The color array for the given fieldValues and color map
@@ -105,5 +108,5 @@ public class ColorGenerator {
 		}
 		return min;
 	}
-	
+
 }

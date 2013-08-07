@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos;
 
 import java.util.ArrayList;
@@ -8,6 +5,12 @@ import java.util.List;
 import java.util.Random;
 
 /**
+ * @short A class for model parameters.
+ * 
+ * New parameters can be added, parameter ranges queried or random parameters extracted.
+ * 
+ * Moreover, a current parameter can be set and accessed for convenience.
+ * 
  * @author Daniel Wirtz
  * 
  */
@@ -44,45 +47,52 @@ public class Parameters {
 	public void addParam(String name, double minval, double maxval) {
 		params.add(new Parameter(name, minval, maxval));
 		double[] tmp = values.clone();
-		values = new double[values.length+1];	
-		for (int i=0;i<tmp.length;i++) {
+		values = new double[values.length + 1];
+		for (int i = 0; i < tmp.length; i++) {
 			values[i] = tmp[i];
 		}
-		values[values.length-1] = minval;
+		values[values.length - 1] = minval;
 	}
-	
+
 	/**
 	 * Gets the current parameter
+	 * 
 	 * @return A double vector
 	 */
 	public double[] getCurrent() {
 		return values;
 	}
-	
+
 	/**
-	 * Sets the current parameter to the values passed.
-	 * If the vector size does not match the current parameter number, an IllegalArgumentException is thrown.
+	 * Sets the current parameter to the values passed. If the vector size does not match the current parameter number,
+	 * an IllegalArgumentException is thrown.
+	 * 
 	 * @param newvalues
 	 */
 	public void setCurrent(double[] newvalues) {
 		if (values.length != newvalues.length)
-			throw new IllegalArgumentException("Wrong parameter values length. Current: "+values.length+", Wanted:"+newvalues.length);
-		for (int i=0; i < values.length; i++) {
+			throw new IllegalArgumentException("Wrong parameter values length. Current: " + values.length + ", Wanted:"
+					+ newvalues.length);
+		for (int i = 0; i < values.length; i++) {
 			values[i] = newvalues[i];
 		}
 	}
-	
+
 	/**
 	 * Sets the value of the current parameter at position index
-	 * @param index The parameter index
-	 * @param value The new value
+	 * 
+	 * @param index
+	 * The parameter index
+	 * @param value
+	 * The new value
 	 */
 	public void setCurrent(int index, double value) {
-		if (index < 0 || index > values.length-1)
-			throw new IllegalArgumentException("Invalid parameter index: "+index+". Max index is "+(values.length-1));
+		if (index < 0 || index > values.length - 1)
+			throw new IllegalArgumentException("Invalid parameter index: " + index + ". Max index is "
+					+ (values.length - 1));
 		values[index] = value;
 	}
-	
+
 	/**
 	 * 
 	 * @param i
@@ -91,7 +101,7 @@ public class Parameters {
 	public double getMaxValue(int i) {
 		return params.get(i).max;
 	}
-	
+
 	/**
 	 * 
 	 * @param i
@@ -100,18 +110,20 @@ public class Parameters {
 	public double getMinValue(int i) {
 		return params.get(i).min;
 	}
-	
+
 	/**
 	 * Returns the label for the i-th parameter
+	 * 
 	 * @param i
 	 * @return
 	 */
 	public String getLabel(int i) {
 		return params.get(i).label;
 	}
-	
+
 	/**
 	 * Returns the name for the i-th parameter
+	 * 
 	 * @param i
 	 * @return
 	 */
@@ -119,9 +131,9 @@ public class Parameters {
 		return params.get(i).name;
 	}
 
-//	public List<Parameter> getParams() {
-//		return Collections.unmodifiableList(params);
-//	}
+	// public List<Parameter> getParams() {
+	// return Collections.unmodifiableList(params);
+	// }
 
 	public int getNumParams() {
 		return params.size();

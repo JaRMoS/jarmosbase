@@ -40,38 +40,30 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-
-/***
- * This class serves as base class for accessing various types of models at
- * different locations.
+/**
+ * This class serves as base class for accessing various types of models at different locations.
  * 
- * Implementing classes implement the abstract members in order to reflect
- * necessary adoptions to different input sources like the file system, websites
- * or others like Android-Assets. Implemented in JKerMor are
- * {@link jarmos.io.WebModelManager} and {@link jarmos.io.FileModelManager}.
+ * Implementing classes implement the abstract members in order to reflect necessary adoptions to different input
+ * sources like the file system, websites or others like Android-Assets.
  * 
- * Each manager has a root directory which must be, depending on the type,
- * either provided at instantiation or are given implicitly. The model system is
- * organized in a way that the root directory contains folders which each
- * contain a single model. Within each such folder, a model.xml-file must be
- * present that describes the model.
+ * Implemented in JKerMor are {@link jarmos.io.WebModelManager} and {@link jarmos.io.FileModelManager}.
  * 
- * The allowed XML file structure is determined by the model.xsd file in the
- * JRMCommons jar file / project.
+ * Each manager has a root directory which must be, depending on the type, either provided at instantiation or are given
+ * implicitly. The model system is organized in a way that the root directory contains folders which each contain a
+ * single model. Within each such folder, a model.xml-file must be present that describes the model.
  * 
- * Despite the model.xml file needed in every model folder,
+ * The allowed XML file structure is determined by the model.xsd file in the JaRMoSBase project.
  * 
- * @author dwirtz
+ * @author Daniel Wirtz @date 2013-08-07
  * 
  * 
  */
 public abstract class AModelManager {
 
 	/**
-	 * This Exception gets thrown when an error occurs regarding the
-	 * functionality of the ModelManager.
+	 * This Exception gets thrown when an error occurs regarding the functionality of the ModelManager.
 	 * 
-	 * @author dwirtz
+	 * @author Daniel Wirtz @date 2013-08-07
 	 * 
 	 */
 	public class ModelManagerException extends Exception {
@@ -96,16 +88,14 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * The name of the jar file inside a models directory containing .class
-	 * files in java bytecode. This file name can be used inside custom
-	 * implementations of getClassLoader, if directory searches are not
-	 * permitted/implemented (e.g. WebModelManager)
+	 * The name of the jar file inside a models directory containing .class files in java bytecode. This file name can
+	 * be used inside custom implementations of getClassLoader, if directory searches are not permitted/implemented
+	 * (e.g. WebModelManager)
 	 */
 	public static final String CLASSES_JARFILE = "classes.jar";
 
 	/**
-	 * The model's info html file name (imported from rbappmit, might change
-	 * later)
+	 * The model's info html file name (imported from rbappmit, might change later)
 	 */
 	public static final String info_filename = "site_info.html";
 
@@ -120,11 +110,10 @@ public abstract class AModelManager {
 	private MathObjectReader mor = null;
 
 	/**
-	 * Constructs a new ModelManager and a private DocumentBuilder and
-	 * SchemaFactory.
+	 * Constructs a new ModelManager and a private DocumentBuilder and SchemaFactory.
 	 * 
-	 * Unfortunately, the Android 8 API does not seem to support the W3C XML
-	 * Schema, so no validation is performed on an android :-(
+	 * Unfortunately, the Android 8 API does not seem to support the W3C XML Schema, so no validation is performed on an
+	 * android :-(
 	 * 
 	 * See
 	 * {@link "http://stackoverflow.com/questions/3129934/schemafactory-doesnt-support-w3c-xml-schema-in-platform-level-8"}
@@ -133,7 +122,6 @@ public abstract class AModelManager {
 	 * on how it SHOULD be..
 	 */
 	public AModelManager() {
-		super();
 		mhandlers = new ArrayList<IMessageHandler>();
 		try {
 			// Create the document builder
@@ -149,12 +137,11 @@ public abstract class AModelManager {
 				try {
 					SchemaFactory sf = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
 					Schema s = sf.newSchema(new StreamSource(in));
-					//dv = s.newValidator();
+					// dv = s.newValidator();
 				} catch (IllegalArgumentException e) { //
 					/*
-					 * See constructor comment on what happens here.. Set
-					 * Validator to null if the IllegalArgumentException gets
-					 * thrown
+					 * See constructor comment on what happens here.. Set Validator to null if the
+					 * IllegalArgumentException gets thrown
 					 */
 					dv = null;
 				}
@@ -175,10 +162,9 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * Loads a class available in the precompiled classes associated with the
-	 * current model. The model.xml-tag "package" is used if set to specify the
-	 * package under which the class can be found; if not set the default
-	 * package (="") is used.
+	 * Loads a class available in the precompiled classes associated with the current model. The model.xml-tag "package"
+	 * is used if set to specify the package under which the class can be found; if not set the default package (="") is
+	 * used.
 	 * 
 	 * @param name
 	 * @return
@@ -199,8 +185,7 @@ public abstract class AModelManager {
 	/**
 	 * 
 	 * @param filename
-	 * @return A buffered reader with 8192 bytes buffer, pointing at the file
-	 *         specified.
+	 * @return A buffered reader with 8192 bytes buffer, pointing at the file specified.
 	 * @throws IOException
 	 * @deprecated Dont use, only here for old rbappmit model loading.
 	 */
@@ -212,17 +197,14 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * This method yields access to any specialized class loaders in subclasses.
-	 * As the android platform works with different loaders then a JRE, for
-	 * example, this interface is provided to enable custom classes loaded with
+	 * This method yields access to any specialized class loaders in subclasses. As the android platform works with
+	 * different loaders then a JRE, for example, this interface is provided to enable custom classes loaded with
 	 * whatever platform.
 	 * 
-	 * If subclasses do not override, the default system class loader is
-	 * provided.
+	 * If subclasses do not override, the default system class loader is provided.
 	 * 
-	 * The class loader must be configured in a way that a call to
-	 * loadClass(String name) must search also inside the current model's
-	 * directory.
+	 * The class loader must be configured in a way that a call to loadClass(String name) must search also inside the
+	 * current model's directory.
 	 * 
 	 * @return A custom class loader instance.
 	 */
@@ -232,27 +214,26 @@ public abstract class AModelManager {
 
 	/**
 	 * 
-	 * Returns the list of all models directories available at the ModelManagers
-	 * source location. At this stage, no validity checks have to be performed
-	 * regarding if a returned folder actually contains a valid model.
+	 * Returns the list of all models directories available at the ModelManagers source location. At this stage, no
+	 * validity checks have to be performed regarding if a returned folder actually contains a valid model.
 	 * 
 	 * @return
 	 * @throws IOException
 	 */
 	protected abstract String[] getFolderList() throws IOException;
-	
+
 	/**
-	 * A short message that writes "loading SD models" dependent on the actual instance 
+	 * A short message that writes "loading SD models" dependent on the actual instance
+	 * 
 	 * @return
 	 */
 	protected abstract String getLoadingMessage();
 
 	/**
-	 * Returns an InputStream instance streaming the contents of the file given
-	 * by filename.
+	 * Returns an InputStream instance streaming the contents of the file given by filename.
 	 * 
 	 * @param filename
-	 *            The model file to return a stream for
+	 * The model file to return a stream for
 	 * @return An InputStream pointing to the resource
 	 * @throws IOException
 	 */
@@ -265,30 +246,29 @@ public abstract class AModelManager {
 	/**
 	 * Template method.
 	 * 
-	 * Implementations of this method must locate the given file inside the
-	 * current model directory and return an input stream pointing to it.
+	 * Implementations of this method must locate the given file inside the current model directory and return an input
+	 * stream pointing to it.
 	 * 
 	 * @param filename
-	 *            The model file to return a stream for
+	 * The model file to return a stream for
 	 * @return An InputStream pointing to the resource
 	 * @throws IOException
 	 */
 	protected abstract InputStream getInStreamImpl(String filename) throws IOException;
 
 	/**
-	 * Use this method in order to get a MathObjectReader instance fitted for
-	 * the current selected model. This method returns an automatically
-	 * configured reader (the old model data is encoded in little endian).
+	 * Use this method in order to get a MathObjectReader instance fitted for the current selected model. This method
+	 * returns an automatically configured reader (the old model data is encoded in little endian).
 	 * 
 	 * @return A MathObjectReader for the current selected model.
 	 */
 	public MathObjectReader getMathObjReader() {
 		return mor;
 	}
-	
+
 	/**
-	 * Scans all directories given by getFolderList() for valid models and
-	 * returns a list of model descriptors for each valid model.
+	 * Scans all directories given by getFolderList() for valid models and returns a list of model descriptors for each
+	 * valid model.
 	 * 
 	 * @return A list of ModelDescriptors
 	 * @throws ModelManagerException
@@ -298,9 +278,11 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * Scans all directories given by getFolderList() for valid models and
-	 * returns a list of model descriptors for each valid model.
-	 * @param pr A IProgressReporter instance to report process in the loading to. 
+	 * Scans all directories given by getFolderList() for valid models and returns a list of model descriptors for each
+	 * valid model.
+	 * 
+	 * @param pr
+	 * A IProgressReporter instance to report process in the loading to.
 	 * 
 	 * @return A list of ModelDescriptors
 	 * @throws ModelManagerException
@@ -381,8 +363,7 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * Returns the model type as given in the model.xml attribute "type" of the
-	 * "model" tag.
+	 * Returns the model type as given in the model.xml attribute "type" of the "model" tag.
 	 * 
 	 * @return The model type as string
 	 */
@@ -398,12 +379,11 @@ public abstract class AModelManager {
 	public abstract URI getModelURI();
 
 	/**
-	 * Returns the attribute value of any attributes of the "model" tag in the
-	 * model.xml file. Returns null if no model directory has been set or the
-	 * attribute does not exist.
+	 * Returns the attribute value of any attributes of the "model" tag in the model.xml file. Returns null if no model
+	 * directory has been set or the attribute does not exist.
 	 * 
 	 * @param attrib_name
-	 *            The attribute's name
+	 * The attribute's name
 	 * @return The attribute value or null if the attribute does not exist
 	 */
 	public String getModelXMLAttribute(String attrib_name) {
@@ -416,14 +396,13 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * Returns the attribute value of any attributes of the tag given by tagname
-	 * in the model.xml file. Returns null if no model directory has been set or
-	 * the attribute does not exist.
+	 * Returns the attribute value of any attributes of the tag given by tagname in the model.xml file. Returns null if
+	 * no model directory has been set or the attribute does not exist.
 	 * 
 	 * @param attrib_name
-	 *            the attribute's name
+	 * the attribute's name
 	 * @param tagname
-	 *            The xml tag whos attributes are to be searched.
+	 * The xml tag whos attributes are to be searched.
 	 * @return The attribute value or null if the attribute does not exist
 	 */
 	public String getModelXMLAttribute(String attrib_name, String tagname) {
@@ -467,8 +446,7 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * Works as the overload with default value, but returns null if no matchin
-	 * element is found.
+	 * Works as the overload with default value, but returns null if no matchin element is found.
 	 * 
 	 * @param tagname
 	 * @return The tag value or null.
@@ -480,17 +458,15 @@ public abstract class AModelManager {
 	/**
 	 * Returns the text content of a tag inside the model.xml file.
 	 * 
-	 * The tag given may be separated by a dot, so that a clear position can be
-	 * addressed. So "description.name" will look up any tags named
-	 * "description" and search therein for any tags named "name". Always the
-	 * first item with a corresponding name is returned.
+	 * The tag given may be separated by a dot, so that a clear position can be addressed. So "description.name" will
+	 * look up any tags named "description" and search therein for any tags named "name". Always the first item with a
+	 * corresponding name is returned.
 	 * 
 	 * @param tagname
-	 *            The tag whos value should be returned.
+	 * The tag whos value should be returned.
 	 * @param default_value
-	 *            The default value if no matching element is found
-	 * @return The tag text content or the default value if no matching tag is
-	 *         found.
+	 * The default value if no matching element is found
+	 * @return The tag text content or the default value if no matching tag is found.
 	 */
 	public String getModelXMLTagValue(String tagname, String default_value) {
 		Element res = getModelXMLElement(tagname);
@@ -498,8 +474,8 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * Returns the package of any java source files associated with this model.
-	 * Defaults to the default package (="") if none is given.
+	 * Returns the package of any java source files associated with this model. Defaults to the default package (="") if
+	 * none is given.
 	 * 
 	 * @return
 	 */
@@ -526,11 +502,9 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * Reads the parameters from the model XML file and returns a Parameters
-	 * object.
+	 * Reads the parameters from the model XML file and returns a Parameters object.
 	 * 
-	 * @return A Parameters object or null if the model definition does not
-	 *         contain parameters.
+	 * @return A Parameters object or null if the model definition does not contain parameters.
 	 */
 	public Parameters getParameters() {
 		Element params = getModelXMLElement("parameters");
@@ -560,26 +534,23 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * Checks if a model.xml file exists in the specified directory and performs
-	 * xsd-validation.
+	 * Checks if a model.xml file exists in the specified directory and performs xsd-validation.
 	 * 
-	 * Note: On the current Android platform the validation using the xsd W3C
-	 * Schema is somehow NOT implemented; so, validation is skipped on android
-	 * platforms.
+	 * Note: On the current Android platform the validation using the xsd W3C Schema is somehow NOT implemented; so,
+	 * validation is skipped on android platforms.
 	 * 
 	 * @pre dir != null
 	 * 
 	 * @param dir
-	 *            The directory to check
+	 * The directory to check
 	 * @return True if the directory contains a valid model, false otherwise
 	 */
 	public boolean isValidModelDir(String dir) {
 		assert dir != null;
 
 		/*
-		 * Store current model directory if set, and temporarily set the model
-		 * dir to dir. This is done as subclass implementations will of course
-		 * depend on getModelDir() when calling modelFileExists().
+		 * Store current model directory if set, and temporarily set the model dir to dir. This is done as subclass
+		 * implementations will of course depend on getModelDir() when calling modelFileExists().
 		 */
 		String olddir = mdir;
 		mdir = dir;
@@ -634,14 +605,12 @@ public abstract class AModelManager {
 	 * Requires the
 	 * 
 	 * @pre isValidModelDir(location) == true
-	 * @post The model is loaded from the specified location and calls to
-	 *       getInStream etc. will serve files from there.
+	 * @post The model is loaded from the specified location and calls to getInStream etc. will serve files from there.
 	 * 
 	 * @param location
-	 *            The directory/path to change to
+	 * The directory/path to change to
 	 * @throws ModelManagerException
-	 *             The current model directory, path or location does not
-	 *             contain a valid model.
+	 * The current model directory, path or location does not contain a valid model.
 	 */
 	public void useModel(String location) throws ModelManagerException {
 		assert isValidModelDir(location);
@@ -673,11 +642,10 @@ public abstract class AModelManager {
 	}
 
 	/**
-	 * Checks if a specified tag exists inside the current models model.xml
-	 * file.
+	 * Checks if a specified tag exists inside the current models model.xml file.
 	 * 
 	 * @param tagname
-	 *            The tag to check
+	 * The tag to check
 	 * @return True if the tag exists or false otherwise
 	 */
 	public boolean xmlTagExists(String tagname) {

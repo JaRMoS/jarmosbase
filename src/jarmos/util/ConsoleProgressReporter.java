@@ -1,10 +1,9 @@
-/**
- * 
- */
 package jarmos.util;
 
 /**
- * @author CreaByte
+ * Simple progress reporting implementation using the Java standard console.
+ * 
+ * @author Daniel Wirtz
  * 
  */
 public class ConsoleProgressReporter implements IProgressReporter {

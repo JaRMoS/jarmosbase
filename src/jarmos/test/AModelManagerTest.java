@@ -1,6 +1,5 @@
 /**
- * Created on Aug 28, 2011 in Project JRMCommons
- * Location: jarmos.io.AModelManagerTest.java
+ * @ingroup jarmosbase
  */
 package jarmos.test;
 
@@ -12,29 +11,28 @@ import jarmos.io.FileModelManager;
 
 import org.junit.Test;
 
-
 /**
  * @author Daniel Wirtz
  * @date Aug 28, 2011
- *
+ * 
  */
 public class AModelManagerTest {
 
-//	/**
-//	 * Test method for {@link jarmos.io.AModelManager#getModelXMLAttribute(java.lang.String)}.
-//	 */
-//	@Test
-//	public void testGetModelXMLAttributeString() {
-//		fail("Not yet implemented");
-//	}
-//
-//	/**
-//	 * Test method for {@link jarmos.io.AModelManager#getModelXMLAttribute(java.lang.String, java.lang.String)}.
-//	 */
-//	@Test
-//	public void testGetModelXMLAttributeStringString() {
-//		fail("Not yet implemented");
-//	}
+	// /**
+	// * Test method for {@link jarmos.io.AModelManager#getModelXMLAttribute(java.lang.String)}.
+	// */
+	// @Test
+	// public void testGetModelXMLAttributeString() {
+	// fail("Not yet implemented");
+	// }
+	//
+	// /**
+	// * Test method for {@link jarmos.io.AModelManager#getModelXMLAttribute(java.lang.String, java.lang.String)}.
+	// */
+	// @Test
+	// public void testGetModelXMLAttributeStringString() {
+	// fail("Not yet implemented");
+	// }
 
 	/**
 	 * Test method for {@link jarmos.io.AModelManager#getModelXMLTagValue(java.lang.String)}.

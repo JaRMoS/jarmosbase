@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos.io;
 
 import java.io.IOException;
@@ -18,11 +15,10 @@ import java.util.Scanner;
  * 
  * The remote root url must be given upon instantiation.
  * 
- * The getFolderList() method tries to access the file DIRLIST_FILE in that
- * location in order to retrieve the possible model folders located at the
- * remote root url.
+ * The getFolderList() method tries to access the file DIRLIST_FILE in that location in order to retrieve the possible
+ * model folders located at the remote root url.
  * 
- * @author dwirtz
+ * @author Daniel Wirtz @date 2013-08-07
  * 
  */
 public class WebModelManager extends AModelManager {
@@ -41,18 +37,18 @@ public class WebModelManager extends AModelManager {
 		super();
 		this.rooturl = rooturl;
 	}
-	
+
 	public WebModelManager(String url) throws MalformedURLException {
 		this(new URL(url));
 	}
-		
-//	/**
-//	 * @return The root web url
-//	 */
-//	public String getRootURL() {
-//		return rooturl;
-//	}
-	
+
+	// /**
+	// * @return The root web url
+	// */
+	// public String getRootURL() {
+	// return rooturl;
+	// }
+
 	/**
 	 * @see jarmos.io.AModelManager#getClassLoader()
 	 */
@@ -61,8 +57,7 @@ public class WebModelManager extends AModelManager {
 		try {
 			URL url = new URL(rooturl + "/" + getModelDir() + "/" + CLASSES_JARFILE);
 			return new URLClassLoader(new URL[] { url }, super.getClassLoader());
-		}
-		catch (MalformedURLException e) {
+		} catch (MalformedURLException e) {
 			return super.getClassLoader();
 		}
 	}

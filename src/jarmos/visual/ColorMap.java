@@ -1,17 +1,18 @@
-/**
- * Created on Aug 29, 2011 in Project JRMCommons
- * Location: jarmos.visual.ColorMap.java
- */
 package jarmos.visual;
 
 /**
- * Enum that implements some color maps alike the ones from MatLab.
+ * Interface for different colorizations.
  * 
- * Can be used in Visualization, at least models can specify the color map in their XML definition (TODO)
+ * Can be used in Visualization, at least models can specify the color map in their XML definition
+ * 
+ * @TODO implement!
+ * 
  * @author Daniel Wirtz
  * @date Aug 29, 2011
- *
+ * 
  */
-public enum ColorMap {
+public interface ColorMap {
+
+	public float[] getColor(float value);
 
 }

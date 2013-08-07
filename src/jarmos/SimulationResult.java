@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos;
 
 import jarmos.geometry.DisplacementField;
@@ -9,11 +6,14 @@ import jarmos.geometry.MeshTransform;
 import java.util.ArrayList;
 import java.util.List;
 
-
 /**
- * @author CreaByte
+ * @short Represents the results of a simulation.
  * 
- *         Represents the results of a simulation.
+ * Contains the LogicSolutionField list, how many parts (e.g. time-steps or simulations for different parameter values)
+ * the fields contain. Moreover, the mesh transformations are also included (if given)
+ * 
+ * @author Daniel Wirtz
+ * 
  */
 public class SimulationResult {
 
@@ -25,14 +25,14 @@ public class SimulationResult {
 	/**
 	 * The number of parts in each LogicSolutionField.
 	 * 
-	 * Set to indicate how many different data sets are contained in all the
-	 * fields (used for evolution problems or parameter sweeps)
+	 * Set to indicate how many different data sets are contained in all the fields (used for evolution problems or
+	 * parameter sweeps)
 	 * 
 	 */
 	public int getNumParts() {
 		return parts;
 	}
-	
+
 	public boolean hasDisplacements() {
 		return hasDispl;
 	}
@@ -47,12 +47,12 @@ public class SimulationResult {
 	public void addField(LogicSolutionField field) {
 		// Perform some checks for consistency
 		for (LogicSolutionField f : fields) {
-			//assert f.getSize() == field.getSize();
+			// assert f.getSize() == field.getSize();
 			if (f.getSize() != field.getSize())
 				throw new RuntimeException(
 						"Inconsistency! Cannot add solution field to collection as the size does not equal the size of already present fields.");
 		}
-		hasDispl |= field instanceof DisplacementField; 
+		hasDispl |= field instanceof DisplacementField;
 		fields.add(field);
 	}
 
@@ -72,14 +72,6 @@ public class SimulationResult {
 	public int getNumValueFields() {
 		return fields.size();
 	}
-
-	// public boolean isComplex() {
-	// boolean res = false;
-	// for (SolutionField s : fields) {
-	// res |= !s.isReal();
-	// }
-	// return res;
-	// }
 
 	public LogicSolutionField getField(int nr) {
 		return fields.get(nr);

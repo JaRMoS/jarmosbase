@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos.io;
 
 import jarmos.IMessageHandler;
@@ -16,11 +13,18 @@ import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 
-
 /**
+ * A wrapper class that takes any AModelManager as source and a FileModelManager as target. Any calls to the
+ * CachingModelManager are forwarded to the given AModelManager instance, the data is read and added to the
+ * FileModelManager's location. Then, the files are served from there.
  * 
- * TODO: Delete half-downloaded models if loading fails! 
- * @author dwirtz
+ * This is implemented to allow simple caching of models from web locations at e.g. the local hard drive or SD-card
+ * (Android).
+ * 
+ * 
+ * TODO: Delete half-downloaded models if loading fails!
+ * 
+ * @author Daniel Wirtz @date 2013-08-07
  * 
  */
 public class CachingModelManager extends AModelManager {
@@ -33,18 +37,23 @@ public class CachingModelManager extends AModelManager {
 
 	/**
 	 * Creates a new caching model manager with overwriteFlag set to false.
+	 * 
 	 * @param source
 	 * @param dest
 	 */
 	public CachingModelManager(AModelManager source, FileModelManager dest) {
 		this(source, dest, false);
 	}
-	
+
 	/**
 	 * Creates a new caching model manager.
-	 * @param source The source model manager
-	 * @param dest The target model manager
-	 * @param overwriteFlag Sets if existent model files should be overwritten or not
+	 * 
+	 * @param source
+	 * The source model manager
+	 * @param dest
+	 * The target model manager
+	 * @param overwriteFlag
+	 * Sets if existent model files should be overwritten or not
 	 */
 	public CachingModelManager(AModelManager source, FileModelManager dest, boolean overwriteFlag) {
 		this.source = source;
@@ -65,22 +74,21 @@ public class CachingModelManager extends AModelManager {
 
 	private void cacheModelFiles() throws IOException, ModelManagerException {
 		// Cache the model info file.
-		// Existence of the tag guarantess the existence of the info html file. 
+		// Existence of the tag guarantess the existence of the info html file.
 		if (source.xmlTagExists("model.description.infohtml")) {
-			String infohtml = source
-					.getModelXMLTagValue("model.description.infohtml");
+			String infohtml = source.getModelXMLTagValue("model.description.infohtml");
 			if (!source.modelFileExists(infohtml)) {
-				throw new ModelManagerException(
-						"Inconsistent model state: XML tag for infohtml exists but the file "+infohtml+" could not be found in the model directory.");
+				throw new ModelManagerException("Inconsistent model state: XML tag for infohtml exists but the file "
+						+ infohtml + " could not be found in the model directory.");
 			}
 			cacheFile(infohtml);
 		}
 		if (source.xmlTagExists("model.description.image")) {
-			String image = source
-					.getModelXMLTagValue("model.description.image");
+			String image = source.getModelXMLTagValue("model.description.image");
 			if (!source.modelFileExists(image)) {
 				throw new ModelManagerException(
-						"Inconsistent model state: XML tag for a model image exists but the file "+image+" could not be found in the model directory.");
+						"Inconsistent model state: XML tag for a model image exists but the file " + image
+								+ " could not be found in the model directory.");
 			}
 			cacheFile(image);
 		}
@@ -124,8 +132,7 @@ public class CachingModelManager extends AModelManager {
 	}
 
 	@Override
-	public List<ModelDescriptor> getModelDescriptors(IProgressReporter pr)
-			throws ModelManagerException {
+	public List<ModelDescriptor> getModelDescriptors(IProgressReporter pr) throws ModelManagerException {
 		// Only the source knows all models..
 		return source.getModelDescriptors(pr);
 	}
@@ -183,20 +190,18 @@ public class CachingModelManager extends AModelManager {
 	 */
 	@Override
 	public boolean modelFileExists(String filename) {
-		return dest.modelFileExists(filename)
-				|| source.modelFileExists(filename);
+		return dest.modelFileExists(filename) || source.modelFileExists(filename);
 	}
-	
+
 	@Override
 	public void removeMessageHandler(IMessageHandler h) {
 		dest.removeMessageHandler(h);
 	}
-	
+
 	@Override
 	protected void sendMessage(String msg) {
 		dest.sendMessage(msg);
 	}
-	
 
 	@Override
 	public void useModel(String dir) throws ModelManagerException {
@@ -204,8 +209,7 @@ public class CachingModelManager extends AModelManager {
 		File destdir = new File(dest.getRoot() + File.separator + dir);
 		if (!destdir.isDirectory()) {
 			if (!destdir.mkdir())
-				throw new ModelManagerException("Could not create directory "
-						+ dir + " in " + dest.getRoot());
+				throw new ModelManagerException("Could not create directory " + dir + " in " + dest.getRoot());
 		}
 		File modelxml = new File(destdir, "model.xml");
 		if (overwriteFlag || !modelxml.exists()) {
@@ -226,10 +230,10 @@ public class CachingModelManager extends AModelManager {
 		try {
 			cacheModelFiles();
 		} catch (IOException e) {
-			throw new ModelManagerException("Error caching model files.",e);
+			throw new ModelManagerException("Error caching model files.", e);
 		}
 	}
-	
+
 	public boolean deleteCachedFiles() {
 		return dest.clearCurrentModel();
 	}

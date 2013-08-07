@@ -1,17 +1,14 @@
-/**
- * 
- */
 package jarmos;
 
 /**
- * Known model types within the JRMCommons project
+ * @short Known model types within the JaRMoSBase project
  * 
- * @author dwirtz
+ * @author Daniel Wirtz @date 2013-08-07
  * 
  */
 public enum ModelType {
 	/**
-	 * This model type is unknown to JRMCommons.
+	 * This model type is unknown to JaRMoSBase.
 	 */
 	Unknown,
 

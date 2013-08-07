@@ -1,6 +1,3 @@
-/**
- * 
- */
 package jarmos;
 
 import jarmos.visual.ColorGenerator;
@@ -8,9 +5,10 @@ import jarmos.visual.VisualFeature;
 
 import org.apache.commons.math.complex.Complex;
 
-
 /**
- * @author CreaByte
+ * @short A solution field with complex values.
+ * 
+ * @author Daniel Wirtz @date 2013-08-06
  * 
  */
 public class ComplexSolutionField extends LogicSolutionField {
