@@ -3,7 +3,7 @@ package jarmos.geometry;
 /**
  * A common interface for classes providing a mesh transformation.
  * 
- * Included in JaRMoSBase as part of the rbappmit heritage.
+ * Included in JaRMoSBase as part of the @ref rbappmit heritage.
  * 
  * See the subclasses for concrete examples.
  * 

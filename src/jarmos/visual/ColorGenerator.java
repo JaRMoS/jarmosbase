@@ -9,7 +9,7 @@ package jarmos.visual;
  * For coloring, any given ColorMap instance is used to obtain suitable coloring. If none is given, the
  * #getDefaultColors method can be used.
  * 
- * @note Thus far only the original colormap from rbappmit is included here without using the ColorMap enum.
+ * @note Thus far only the original colormap from @ref rbappmit is included here without using the ColorMap enum.
  * 
  * @author Daniel Wirtz
  * @date Aug 29, 2011

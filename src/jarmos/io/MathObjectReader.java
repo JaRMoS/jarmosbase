@@ -205,7 +205,7 @@ public class MathObjectReader {
 	}
 
 	/**
-	 * This method exists due to compatibility with the old rbappmit models.
+	 * This method exists due to compatibility with the old @ref rbappmit models.
 	 * 
 	 * Does NOT close the stream after reading to allow reading of more data.
 	 * 

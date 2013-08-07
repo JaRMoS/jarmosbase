@@ -5,7 +5,7 @@ package jarmos.visual;
  * 
  * Can be used in Visualization, at least models can specify the color map in their XML definition
  * 
- * @TODO implement!
+ * @todo implement!
  * 
  * @author Daniel Wirtz
  * @date Aug 29, 2011

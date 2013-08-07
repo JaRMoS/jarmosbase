@@ -187,7 +187,7 @@ public abstract class AModelManager {
 	 * @param filename
 	 * @return A buffered reader with 8192 bytes buffer, pointing at the file specified.
 	 * @throws IOException
-	 * @deprecated Dont use, only here for old rbappmit model loading.
+	 * @deprecated Dont use, only here for old @ref rbappmit model loading.
 	 */
 	public BufferedReader getBufReader(String filename) throws IOException {
 		int buffer_size = 8192;
