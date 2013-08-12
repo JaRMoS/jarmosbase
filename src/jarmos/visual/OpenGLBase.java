@@ -216,6 +216,14 @@ public class OpenGLBase {
 		}
 		return nodeCol;
 	}
+	
+	private String getShortFillState(int curFloatBufOffset) {
+		return Math.round((curFloatBufOffset / (double)shortBuf.capacity()) * 100) + "%";
+	}
+	
+	private String getFloatFillState(int off) {
+		return Math.round((off / (double)floatBuf.capacity()) * 100) + "%";
+	}
 
 	protected void frameRendered() {
 		/*
@@ -347,7 +355,7 @@ public class OpenGLBase {
 			floatBuf.put(v[i]);
 			curFloatBufOffset += v[i].length;
 			Log.d("OpenGLBase", "FloatBuffer: Added " + v[i].length + " float values for " + gData.getNumVertices()
-					+ " vertices in set " + (i + 1) + ". Fill state: " + curFloatBufOffset + "/" + floatBuf.capacity());
+					+ " vertices in set " + (i + 1) + ". Fill state: " + getFloatFillState(curFloatBufOffset));
 		}
 
 		/**
@@ -357,7 +365,7 @@ public class OpenGLBase {
 		shortBuf.put(gData.faces);
 		curShortBufOffset += gData.faces.length;
 		Log.d("OpenGLBase", "ShortBuffer: Added " + gData.faces.length + " short values for " + gData.numFaces
-				+ " element faces. Fill state: " + curShortBufOffset + "/" + shortBuf.capacity());
+				+ " element faces. Fill state: " + getShortFillState(curShortBufOffset));
 
 		/**
 		 * Element edges buffer
@@ -366,7 +374,7 @@ public class OpenGLBase {
 		shortBuf.put(gData.faceWireframe);
 		curShortBufOffset += gData.faceWireframe.length;
 		Log.d("OpenGLBase", "ShortBuffer: Added " + gData.faceWireframe.length
-				+ " short values for faces wireframe. Fill state: " + curShortBufOffset + "/" + shortBuf.capacity());
+				+ " short values for faces wireframe. Fill state: " + getShortFillState(curShortBufOffset));
 
 		/**
 		 * Colors for each visualization field.
@@ -386,7 +394,7 @@ public class OpenGLBase {
 			floatBuf.put(col);
 			curFloatBufOffset += col.length;
 			Log.d("OpenGLBase", "FloatBuffer: Added " + col.length + " floats for color field '" + vf.Name + "' ("
-					+ (i + 1) + "). Fill state: " + curFloatBufOffset + "/" + floatBuf.capacity());
+					+ (i + 1) + "). Fill state: " + getFloatFillState(curFloatBufOffset));
 		}
 
 		// Init array for 3D object
@@ -397,7 +405,7 @@ public class OpenGLBase {
 				floatBuf.put(gData.normal[i]);
 				curFloatBufOffset += gData.normal[i].length;
 				Log.d("OpenGLBase", "FloatBuffer: Added " + gData.normal[i].length
-						+ " floats for 3D normal data. Fill state: " + curFloatBufOffset + "/" + floatBuf.capacity());
+						+ " floats for 3D normal data. Fill state: " + getFloatFillState(curFloatBufOffset));
 			}
 		}
 	}
