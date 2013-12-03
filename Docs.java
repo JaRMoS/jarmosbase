@@ -17,7 +17,9 @@
  * named @c model.xml and has to reside in the root folder of the model. The XML file has to match the XSD schema as
  * described in @ref jarmos_modelxsd
  * 
- * Please check the JaRMosModels repository for example @c model.xml instances.
+ * Please check the \ref jarmosmodels repository for example @c model.xml instances.
+ * 
+ * Also checkout the \ref jarmos_ownmodels page if you want to include your own models.
  * 
  * @section jarmosbase_license License conditions
  * 
