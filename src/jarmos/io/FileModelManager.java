@@ -149,7 +149,7 @@ public class FileModelManager extends AModelManager {
 
 	@Override
 	public URI getModelURI() {
-		return URI.create("file://" + root + "/" + getModelDir());
+		return new File(getFullModelPath()).toURI(); // URI.create("file://" + root + "/" + getModelDir());
 	}
 
 	@Override
